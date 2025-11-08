@@ -631,3 +631,411 @@ def save_figure(fig, filepath, dpi=300, format='png'):
     """
     # TODO: Реализовать сохранение фигуры
     pass
+
+
+# =============================================================================
+# ВИЗУАЛИЗАЦИЯ РЕЗУЛЬТАТОВ ОТСЛЕЖИВАНИЯ ПИКОВ
+# =============================================================================
+
+def plot_eigenfrequencies_vs_field(results, save_path=None, show=False):
+    """
+    Построить график собственных частот системы vs магнитное поле
+    
+    Parameters:
+    -----------
+    results : list of dict
+        Результаты отслеживания пиков:
+        - 'field': значение поля (Э)
+        - 'f1', 'f2': собственные частоты двух мод (ГГц)
+    save_path : str or None
+        Путь для сохранения графика
+    show : bool
+        Если True, отобразить график на экране
+    """
+    # Извлечение данных
+    fields = [r['field'] for r in results]
+    f1_values = [r['f1'] for r in results]
+    f2_values = [r['f2'] for r in results]
+    
+    # Создание фигуры
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Построение графиков
+    ax.plot(fields, f1_values, 'o-', color='blue', linewidth=2, 
+            markersize=6, label='Мода 1', alpha=0.8)
+    ax.plot(fields, f2_values, 's-', color='red', linewidth=2, 
+            markersize=6, label='Мода 2', alpha=0.8)
+    
+    # Настройка осей
+    ax.set_xlabel('Магнитное поле (Э)', fontsize=12)
+    ax.set_ylabel('Собственная частота (ГГц)', fontsize=12)
+    ax.set_title('Собственные частоты системы vs магнитное поле', fontsize=14)
+    
+    # Сетка и легенда
+    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.legend(fontsize=11, loc='best')
+    
+    # Плотная компоновка
+    plt.tight_layout()
+    
+    # Сохранение графика
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"  График сохранен: {save_path}")
+    
+    # Отображение на экране
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+
+def plot_peak_widths_vs_field(results, save_path=None, show=False):
+    """
+    Построить график ширин пиков vs магнитное поле
+    
+    Parameters:
+    -----------
+    results : list of dict
+        Результаты отслеживания пиков:
+        - 'field': значение поля (Э)
+        - 'w1', 'w2': ширины пиков (ГГц)
+    save_path : str or None
+        Путь для сохранения графика
+    show : bool
+        Если True, отобразить график на экране
+    """
+    # Извлечение данных
+    fields = [r['field'] for r in results]
+    w1_values = [r['w1'] for r in results]
+    w2_values = [r['w2'] for r in results]
+    
+    # Создание фигуры
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Построение графиков
+    ax.plot(fields, w1_values, 'o-', color='blue', linewidth=2, 
+            markersize=6, label='Ширина моды 1', alpha=0.8)
+    ax.plot(fields, w2_values, 's-', color='red', linewidth=2, 
+            markersize=6, label='Ширина моды 2', alpha=0.8)
+    
+    # Настройка осей
+    ax.set_xlabel('Магнитное поле (Э)', fontsize=12)
+    ax.set_ylabel('Ширина пика (ГГц)', fontsize=12)
+    ax.set_title('Ширины пиков vs магнитное поле', fontsize=14)
+    
+    # Сетка и легенда
+    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.legend(fontsize=11, loc='best')
+    
+    # Плотная компоновка
+    plt.tight_layout()
+    
+    # Сохранение графика
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"  График сохранен: {save_path}")
+    
+    # Отображение на экране
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+
+def plot_peak_amplitudes_vs_field(results, save_path=None, show=False):
+    """
+    Построить график амплитуд пиков vs магнитное поле
+    
+    Parameters:
+    -----------
+    results : list of dict
+        Результаты отслеживания пиков:
+        - 'field': значение поля (Э)
+        - 'a1', 'a2': амплитуды пиков
+    save_path : str or None
+        Путь для сохранения графика
+    show : bool
+        Если True, отобразить график на экране
+    """
+    # Извлечение данных
+    fields = [r['field'] for r in results]
+    a1_values = [r['a1'] for r in results]
+    a2_values = [r['a2'] for r in results]
+    
+    # Создание фигуры
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Построение графиков
+    ax.plot(fields, a1_values, 'o-', color='blue', linewidth=2, 
+            markersize=6, label='Амплитуда моды 1', alpha=0.8)
+    ax.plot(fields, a2_values, 's-', color='red', linewidth=2, 
+            markersize=6, label='Амплитуда моды 2', alpha=0.8)
+    
+    # Настройка осей
+    ax.set_xlabel('Магнитное поле (Э)', fontsize=12)
+    ax.set_ylabel('Амплитуда пика (провала)', fontsize=12)
+    ax.set_title('Амплитуды пиков vs магнитное поле', fontsize=14)
+    
+    # Сетка и легенда
+    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.legend(fontsize=11, loc='best')
+    
+    # Плотная компоновка
+    plt.tight_layout()
+    
+    # Сохранение графика
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"  График сохранен: {save_path}")
+    
+    # Отображение на экране
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+
+def plot_peak_fit_quality_vs_field(results, save_path=None, show=False):
+    """
+    Построить график качества подгонки vs магнитное поле
+    
+    Parameters:
+    -----------
+    results : list of dict
+        Результаты отслеживания пиков:
+        - 'field': значение поля (Э)
+        - 'r_squared': коэффициент детерминации
+        - 'rmse': среднеквадратичная ошибка
+    save_path : str or None
+        Путь для сохранения графика
+    show : bool
+        Если True, отобразить график на экране
+    """
+    # Извлечение данных
+    fields = [r['field'] for r in results]
+    r2_values = [r['r_squared'] for r in results]
+    rmse_values = [r['rmse'] for r in results]
+    
+    # Создание фигуры с двумя субплотами
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    
+    # График R²
+    ax1.plot(fields, r2_values, 'o-', color='green', linewidth=2, 
+            markersize=6, alpha=0.8)
+    ax1.set_ylabel('R² (коэффициент детерминации)', fontsize=12)
+    ax1.set_title('Качество подгонки vs магнитное поле', fontsize=14)
+    ax1.grid(True, alpha=0.3, linestyle='--')
+    ax1.axhline(y=0.95, color='red', linestyle='--', linewidth=1, alpha=0.5, label='R² = 0.95')
+    ax1.legend(fontsize=10, loc='best')
+    
+    # График RMSE
+    ax2.plot(fields, rmse_values, 's-', color='orange', linewidth=2, 
+            markersize=6, alpha=0.8)
+    ax2.set_xlabel('Магнитное поле (Э)', fontsize=12)
+    ax2.set_ylabel('RMSE (среднеквадратичная ошибка)', fontsize=12)
+    ax2.grid(True, alpha=0.3, linestyle='--')
+    
+    # Плотная компоновка
+    plt.tight_layout()
+    
+    # Сохранение графика
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"  График сохранен: {save_path}")
+    
+    # Отображение на экране
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+
+def plot_peak_tracking_summary(results, save_path=None, show=False):
+    """
+    Построить сводный график всех параметров пиков
+    
+    Parameters:
+    -----------
+    results : list of dict
+        Результаты отслеживания пиков
+    save_path : str or None
+        Путь для сохранения графика
+    show : bool
+        Если True, отобразить график на экране
+    """
+    # Извлечение данных
+    fields = [r['field'] for r in results]
+    f1_values = [r['f1'] for r in results]
+    f2_values = [r['f2'] for r in results]
+    w1_values = [r['w1'] for r in results]
+    w2_values = [r['w2'] for r in results]
+    a1_values = [r['a1'] for r in results]
+    a2_values = [r['a2'] for r in results]
+    r2_values = [r['r_squared'] for r in results]
+    
+    # Создание фигуры с 4 субплотами
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
+    
+    # 1. Собственные частоты
+    ax1.plot(fields, f1_values, 'o-', color='blue', linewidth=2, 
+            markersize=5, label='Мода 1', alpha=0.8)
+    ax1.plot(fields, f2_values, 's-', color='red', linewidth=2, 
+            markersize=5, label='Мода 2', alpha=0.8)
+    ax1.set_ylabel('Собственная частота (ГГц)', fontsize=11)
+    ax1.set_title('Собственные частоты', fontsize=12, fontweight='bold')
+    ax1.grid(True, alpha=0.3, linestyle='--')
+    ax1.legend(fontsize=10, loc='best')
+    
+    # 2. Ширины пиков
+    ax2.plot(fields, w1_values, 'o-', color='blue', linewidth=2, 
+            markersize=5, label='Ширина 1', alpha=0.8)
+    ax2.plot(fields, w2_values, 's-', color='red', linewidth=2, 
+            markersize=5, label='Ширина 2', alpha=0.8)
+    ax2.set_ylabel('Ширина пика (ГГц)', fontsize=11)
+    ax2.set_title('Ширины пиков', fontsize=12, fontweight='bold')
+    ax2.grid(True, alpha=0.3, linestyle='--')
+    ax2.legend(fontsize=10, loc='best')
+    
+    # 3. Амплитуды пиков
+    ax3.plot(fields, a1_values, 'o-', color='blue', linewidth=2, 
+            markersize=5, label='Амплитуда 1', alpha=0.8)
+    ax3.plot(fields, a2_values, 's-', color='red', linewidth=2, 
+            markersize=5, label='Амплитуда 2', alpha=0.8)
+    ax3.set_xlabel('Магнитное поле (Э)', fontsize=11)
+    ax3.set_ylabel('Амплитуда пика', fontsize=11)
+    ax3.set_title('Амплитуды пиков', fontsize=12, fontweight='bold')
+    ax3.grid(True, alpha=0.3, linestyle='--')
+    ax3.legend(fontsize=10, loc='best')
+    
+    # 4. Качество подгонки
+    ax4.plot(fields, r2_values, 'o-', color='green', linewidth=2, 
+            markersize=5, alpha=0.8)
+    ax4.set_xlabel('Магнитное поле (Э)', fontsize=11)
+    ax4.set_ylabel('R² (коэффициент детерминации)', fontsize=11)
+    ax4.set_title('Качество подгонки', fontsize=12, fontweight='bold')
+    ax4.grid(True, alpha=0.3, linestyle='--')
+    ax4.axhline(y=0.95, color='red', linestyle='--', linewidth=1, alpha=0.5)
+    
+    # Общий заголовок
+    fig.suptitle('Сводка отслеживания пиков', fontsize=14, fontweight='bold', y=0.995)
+    
+    # Плотная компоновка
+    plt.tight_layout()
+    
+    # Сохранение графика
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"  График сохранен: {save_path}")
+    
+    # Отображение на экране
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+
+def plot_example_peak_fits(data, results, field_indices=None, 
+                           save_path=None, show=False):
+    """
+    Построить примеры аппроксимации спектров для нескольких полей
+    
+    Parameters:
+    -----------
+    data : dict
+        Данные S-параметров:
+        - 'freq': массив частот (ГГц)
+        - 'field': массив полей (Э)
+        - 's_param': 2D массив S-параметров
+    results : list of dict
+        Результаты отслеживания пиков
+    field_indices : list of int or None
+        Индексы полей для отображения (по умолчанию: начало, середина, конец)
+    save_path : str or None
+        Путь для сохранения графика
+    show : bool
+        Если True, отобразить график на экране
+    """
+    import peak_tracking
+    
+    # Если индексы не указаны, используем начало, середину и конец
+    if field_indices is None:
+        field_indices = [0, len(results)//2, len(results)-1]
+    
+    freq = data['freq']
+    field = data['field']
+    s_param = data['s_param']
+    
+    # Количество примеров
+    n_examples = len(field_indices)
+    
+    # Создание фигуры
+    fig, axes = plt.subplots(n_examples, 1, figsize=(12, 4*n_examples))
+    if n_examples == 1:
+        axes = [axes]
+    
+    for i, idx in enumerate(field_indices):
+        if idx >= len(results):
+            idx = len(results) - 1
+        
+        result = results[idx]
+        field_value = result['field']
+        
+        # Найти индекс поля в данных
+        field_idx = np.argmin(np.abs(field - field_value))
+        
+        # Экспериментальный спектр
+        spectrum_exp = np.abs(s_param[field_idx, :])
+        
+        # Восстановленный спектр из параметров
+        spectrum_fit = peak_tracking.two_lorentzians_dip(
+            freq,
+            result['f1'], result['w1'], result['a1'],
+            result['f2'], result['w2'], result['a2'],
+            result['baseline']
+        )
+        
+        # Преобразование в дБ для лучшей видимости
+        epsilon = 1e-10
+        spectrum_exp_db = 20 * np.log10(spectrum_exp + epsilon)
+        spectrum_fit_db = 20 * np.log10(spectrum_fit + epsilon)
+        
+        # Построение
+        ax = axes[i]
+        ax.plot(freq, spectrum_exp_db, 'o', color='gray', markersize=3, 
+               alpha=0.5, label='Эксперимент')
+        ax.plot(freq, spectrum_fit_db, '-', color='red', linewidth=2, 
+               label='Аппроксимация')
+        
+        # Маркеры пиков
+        ax.axvline(x=result['f1'], color='blue', linestyle='--', 
+                  linewidth=1, alpha=0.7, label=f"Пик 1: {result['f1']:.5f} ГГц")
+        ax.axvline(x=result['f2'], color='red', linestyle='--', 
+                  linewidth=1, alpha=0.7, label=f"Пик 2: {result['f2']:.5f} ГГц")
+        
+        # Настройка
+        ax.set_xlabel('Частота (ГГц)', fontsize=11)
+        ax.set_ylabel('|S| (дБ)', fontsize=11)
+        ax.set_title(f'Поле: {field_value:.2f} Э, R²={result["r_squared"]:.6f}', 
+                    fontsize=12, fontweight='bold')
+        ax.grid(True, alpha=0.3, linestyle='--')
+        ax.legend(fontsize=9, loc='best')
+    
+    # Общий заголовок
+    fig.suptitle('Примеры аппроксимации спектров двумя лоренцианами', 
+                fontsize=14, fontweight='bold', y=0.995)
+    
+    # Плотная компоновка
+    plt.tight_layout()
+    
+    # Сохранение графика
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"  График сохранен: {save_path}")
+    
+    # Отображение на экране
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+

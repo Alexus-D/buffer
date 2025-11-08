@@ -9,7 +9,7 @@ from datetime import datetime
 
 import numpy as np
 
-import config_physics, models
+import config_physics, models, config_data
 
 # =============================================================================
 # ЗАГРУЗКА ДАННЫХ
@@ -64,11 +64,12 @@ def load_s_parameter_data(filepath):
     s_param_raw = raw_data[1:, 1:]
     
     # Преобразование в комплексные числа
-    # Предполагается формат: dB и амплитуда (нужно конвертировать из dB)
-    s_param_magnitude = models.convert_dB_to_linear(s_param_raw)
+    s_param_magnitude = models.convert_dB_to_linear(s_param_raw) if 'db' in config_data.COMPLEX_FORMAT else s_param_raw
+
+    s_param_phase = np.zeros_like(s_param_magnitude)  # Заглушка для фазы (если нужно, можно доработать)
     
-    # Создание комплексного массива (пока без фазы, только амплитуда)
-    s_param = s_param_magnitude.astype(complex)
+    # Создание комплексного массива (пока с фазой 0)
+    s_param = s_param_magnitude * np.exp(1j * s_param_phase)
     
     # Формирование словаря результата
     data = {
@@ -78,8 +79,6 @@ def load_s_parameter_data(filepath):
         's_type': s_type,
         'filepath': filepath
     }
-
-    data =  filter_data_by_range(data, field_range=(config_physics.MIN_VALID_FIELD, None), freq_range=None) if config_physics.MIN_VALID_FIELD is not None else data
 
     return filter_data_by_range(data, field_range=config_physics.FIELD_RANGE, freq_range=config_physics.FREQ_RANGE)
 
@@ -104,34 +103,28 @@ def filter_data_by_range(data, field_range=None, freq_range=None):
     --------
     filtered_data : dict
         Отфильтрованные данные (новый словарь, исходный не изменяется)
-        
-    Заглушка для Этапа 1
     """
     # Создаем копию словаря, чтобы не модифицировать исходные данные
     filtered_data = {}
-    
-    freq_range = list(freq_range) if freq_range is not None else None
-    field_range = list(field_range) if field_range is not None else None
 
-    if freq_range is not None:
-        freq_range[0] = np.min(data['freq']) if freq_range[0] is None else freq_range[0]
-        freq_range[1] = np.max(data['freq']) if freq_range[1] is None else freq_range[1]
-    else:
-        freq_range = [np.min(data['freq']), np.max(data['freq'])]
+    ranges = {'freq': freq_range, 'field': field_range}
+    masks = {}
 
-    if field_range is not None:
-        field_range[0] = np.min(data['field']) if field_range[0] is None else field_range[0]
-        field_range[1] = np.max(data['field']) if field_range[1] is None else field_range[1]
-    else:
-        field_range = [np.min(data['field']), np.max(data['field'])]
+    for key, value in ranges.items():
+        value = list(value) if value is not None else [None, None]
+        value = [np.min(data[key]) if value[0] is None else value[0],
+                  np.max(data[key]) if value[1] is None else value[1]]
+        ranges[key] = value
 
-    freq_mask = np.all([data['freq'] >= freq_range[0], data['freq'] <= freq_range[1]], axis=0) if 'freq' in data else np.ones_like(data['freq'], dtype=bool)
-    field_mask = np.all([data['field'] >= field_range[0], data['field'] <= field_range[1]], axis=0) if 'field' in data else np.ones_like(data['field'], dtype=bool)
+        if key in data:
+            masks[key] = np.all([data[key] >= value[0], data[key] <= value[1]], axis=0)
+        else:
+            raise ValueError(f"Ключ '{key}' отсутствует в данных для фильтрации.")
     
     # Создаем новый словарь с отфильтрованными данными
-    filtered_data['freq'] = data['freq'][freq_mask]
-    filtered_data['field'] = data['field'][field_mask]
-    filtered_data['s_param'] = data['s_param'][np.ix_(field_mask, freq_mask)]
+    filtered_data['freq'] = data['freq'][masks['freq']] if 'freq' in masks else data['freq']
+    filtered_data['field'] = data['field'][masks['field']] if 'field' in masks else data['field']
+    filtered_data['s_param'] = data['s_param'][np.ix_(masks['field'], masks['freq'])] if 'field' in masks and 'freq' in masks else data['s_param']
     
     # Копируем остальные ключи из исходного словаря
     for key in data:

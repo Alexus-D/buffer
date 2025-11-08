@@ -48,6 +48,8 @@ class InteractiveParameterSelector:
         self.cavity_width = None  # (freq_min, freq_max)
         self.mode_separations = []  # [distance, ...]
         self.cavity_fit_region = None  # {'freq_range': (f_min, f_max), 'field_range': (h_min, h_max)}
+        self.selected_peaks = []  # [(field, freq), (field, freq)] - для отслеживания пиков
+        self.example_fields = []  # [field1, field2, ...] - поля для примеров фиттинга
         
         # Временные данные для многошаговых режимов
         self.temp_points = []
@@ -57,6 +59,18 @@ class InteractiveParameterSelector:
         self.lines = []
         
         # Создание кнопок
+        self.buttons_params = [['Калибровка\nмагнона', 'magnon_calibration', 'Кликните на пик магнонной моды (выберите точку на контуре)'],
+                               ['Частота\nрезонатора', 'cavity_frequency', 'Кликните на пик резонатора (выберите точку на контуре)'],
+                               ['Ширина\nмагнона', 'magnon_width', 'Выберите диапазон частот для магнонной моды'],
+                               ['Ширина\nрезонатора', 'cavity_width', 'Выберите диапазон частот для резонатора'],
+                               ['Расстояние\nмежду модами', 'separation', 'Выберите расстояние между модами'],
+                               ['Диапазон фита\nрезонатора', 'cavity_fit_region', 'Выберите диапазон фита для резонатора'],
+                               ['Выбрать\n2 пика', 'select_peaks', 'Выберите два пика на контурной карте'],
+                               ['Примеры\nфиттинга', 'example_fields', 'Выберите поля для примеров фиттинга']]
+        
+        self.save_button_params = ['Сохранить', self._save_parameters]
+        self.clear_button_params = ['Очистить', self._clear_all]
+        self.buttons = {}
         self._create_buttons()
         
         # Подключение обработчика кликов
@@ -80,90 +94,33 @@ class InteractiveParameterSelector:
         
         # Стартовая позиция снизу
         button_bottom = 0.15
-        
-        # Кнопка: Калибровка магнонной моды
-        ax_btn1 = self.fig.add_axes([button_left, button_bottom + button_spacing * 4, 
-                                     button_width, button_height])
-        self.btn_magnon_calib = Button(ax_btn1, 'Калибровка\nмагнона')
-        self.btn_magnon_calib.on_clicked(self._mode_magnon_calibration)
-        
-        # Кнопка: Частота резонатора
-        ax_btn2 = self.fig.add_axes([button_left, button_bottom + button_spacing * 3, 
-                                     button_width, button_height])
-        self.btn_cavity_freq = Button(ax_btn2, 'Частота\nрезонатора')
-        self.btn_cavity_freq.on_clicked(self._mode_cavity_frequency)
-        
-        # Кнопка: Ширина магнонной моды
-        ax_btn3 = self.fig.add_axes([button_left, button_bottom + button_spacing * 2, 
-                                     button_width, button_height])
-        self.btn_magnon_width = Button(ax_btn3, 'Ширина\nмагнона')
-        self.btn_magnon_width.on_clicked(self._mode_magnon_width)
-        
-        # Кнопка: Ширина резонатора
-        ax_btn4 = self.fig.add_axes([button_left, button_bottom + button_spacing * 1, 
-                                     button_width, button_height])
-        self.btn_cavity_width = Button(ax_btn4, 'Ширина\nрезонатора')
-        self.btn_cavity_width.on_clicked(self._mode_cavity_width)
-        
-        # Кнопка: Расстояние между модами
-        ax_btn5 = self.fig.add_axes([button_left, button_bottom, 
-                                     button_width, button_height])
-        self.btn_mode_separation = Button(ax_btn5, 'Расстояние\nмежду модами')
-        self.btn_mode_separation.on_clicked(self._mode_separation)
-        
-        # Кнопка: Диапазон фита резонатора
-        ax_btn6 = self.fig.add_axes([button_left, button_bottom - button_spacing * 1, 
-                                     button_width, button_height])
-        self.btn_cavity_fit_region = Button(ax_btn6, 'Диапазон фита\nрезонатора')
-        self.btn_cavity_fit_region.on_clicked(self._mode_cavity_fit_region)
+
+        for label, mode, instruction in self.buttons_params:
+            ax_btn = self.fig.add_axes([button_left, button_bottom, 
+                                        button_width, button_height])
+            self.buttons[label] = Button(ax_btn, label)
+            self.buttons[label].on_clicked(lambda event, m=mode, i=instruction: self._change_mode(m, i))
+            button_bottom += button_spacing
         
         # Кнопка: Сохранить
         ax_btn_save = self.fig.add_axes([button_left, 0.05, 
                                          button_width, button_height])
-        self.btn_save = Button(ax_btn_save, 'Сохранить')
-        self.btn_save.on_clicked(self._save_parameters)
+        self.buttons['Сохранить'] = Button(ax_btn_save, self.save_button_params[0])
+        self.buttons['Сохранить'].on_clicked(self.save_button_params[1])
         
         # Кнопка: Очистить
         ax_btn_clear = self.fig.add_axes([button_left + button_width + 0.01, 0.05, 
                                           button_width, button_height])
-        self.btn_clear = Button(ax_btn_clear, 'Очистить')
-        self.btn_clear.on_clicked(self._clear_all)
+        self.buttons['Очистить'] = Button(ax_btn_clear, self.clear_button_params[0])
+        self.buttons['Очистить'].on_clicked(self.clear_button_params[1])
     
-    def _mode_magnon_calibration(self, event):
-        """Режим: выбор калибровочной точки магнона"""
-        self.mode = 'magnon_calibration'
+    def _change_mode(self, new_mode, instruction):
+        """Изменить режим выбора и обновить инструкцию"""
+        self.mode = new_mode
         self.temp_points = []
-        self._update_instruction('Кликните на пик магнонной моды (выберите точку на контуре)')
-    
-    def _mode_cavity_frequency(self, event):
-        """Режим: выбор частоты резонатора"""
-        self.mode = 'cavity_frequency'
-        self.temp_points = []
-        self._update_instruction('Кликните на резонанс резонатора (выберите частоту)')
-    
-    def _mode_magnon_width(self, event):
-        """Режим: выбор ширины магнонной моды"""
-        self.mode = 'magnon_width'
-        self.temp_points = []
-        self._update_instruction('Кликните на левую границу пика магнона')
-    
-    def _mode_cavity_width(self, event):
-        """Режим: выбор ширины резонатора"""
-        self.mode = 'cavity_width'
-        self.temp_points = []
-        self._update_instruction('Кликните на левую границу пика резонатора')
-    
-    def _mode_separation(self, event):
-        """Режим: измерение расстояния между модами"""
-        self.mode = 'mode_separation'
-        self.temp_points = []
-        self._update_instruction('Кликните на первую моду')
-    
-    def _mode_cavity_fit_region(self, event):
-        """Режим: выбор диапазона для фиттинга резонатора"""
-        self.mode = 'cavity_fit_region'
-        self.temp_points = []
-        self._update_instruction('Кликните на левый нижний угол области для фита резонатора')
+        if new_mode == 'select_peaks':
+            self.selected_peaks = []
+        self._update_instruction(instruction)
     
     def _on_click(self, event):
         """Обработчик клика мыши"""
@@ -199,6 +156,12 @@ class InteractiveParameterSelector:
         
         elif self.mode == 'cavity_fit_region':
             self._handle_cavity_fit_region(freq_click, field_click)
+        
+        elif self.mode == 'select_peaks':
+            self._handle_select_peaks(freq_click, field_click)
+        
+        elif self.mode == 'example_fields':
+            self._handle_example_fields(freq_click, field_click)
     
     def _handle_magnon_calibration(self, freq, field):
         """
@@ -429,6 +392,122 @@ class InteractiveParameterSelector:
             self.mode = None
             self.temp_points = []
     
+    def _handle_select_peaks(self, freq, field):
+        """
+        Обработка выбора двух пиков для отслеживания
+        
+        Автоматически находит ближайший пик в окрестности клика
+        """
+        # Автоматический поиск пика в окрестности клика
+        try:
+            import peak_tracking
+            peak_location, peak_value = peak_tracking.find_nearest_peak(
+                self.data, freq, field,
+                search_radius_freq=0.005  # ±5 МГц
+            )
+            field_peak, freq_peak = peak_location
+        except Exception as e:
+            print(f"  ⚠ Ошибка автопоиска пика: {e}")
+            # Используем точку клика как есть
+            field_peak, freq_peak = field, freq
+        
+        self.selected_peaks.append((field_peak, freq_peak))
+        
+        # Цвета для пиков
+        colors = ['orange', 'purple']
+        color = colors[len(self.selected_peaks) - 1]
+        
+        # Рисуем маркер в найденной точке
+        marker, = self.ax.plot(freq_peak, field_peak, '*', color=color, 
+                              markersize=20, markeredgecolor='black', markeredgewidth=1.5,
+                              label=f'Пик {len(self.selected_peaks)}')
+        self.markers.append(marker)
+        
+        # Добавляем текст
+        text = self.ax.text(freq_peak, field_peak, f' P{len(self.selected_peaks)}', 
+                           fontsize=12, color=color, fontweight='bold',
+                           bbox=dict(boxstyle='round,pad=0.3', facecolor='white', 
+                                    edgecolor=color, alpha=0.8))
+        self.markers.append(text)
+        
+        # Если автопоиск сработал, рисуем также точку клика для визуализации
+        if (field_peak != field) or (freq_peak != freq):
+            click_marker, = self.ax.plot(freq, field, 'x', color=color, 
+                                        markersize=10, markeredgewidth=2, alpha=0.5)
+            self.markers.append(click_marker)
+        
+        self.fig.canvas.draw()
+        
+        if len(self.selected_peaks) < 2:
+            self._update_instruction(f'Пик 1 выбран: H={field_peak:.2f} Э, f={freq_peak:.6f} ГГц. '
+                                    f'Кликните на второй пик')
+        else:
+            # Оба пика выбраны - рисуем линию между ними
+            f1, h1 = self.selected_peaks[0][1], self.selected_peaks[0][0]
+            f2, h2 = self.selected_peaks[1][1], self.selected_peaks[1][0]
+            
+            line, = self.ax.plot([f1, f2], [h1, h2], 
+                                'k--', linewidth=2, alpha=0.6)
+            self.lines.append(line)
+            self.fig.canvas.draw()
+            
+            freq_diff = abs(f2 - f1)
+            field_diff = abs(h2 - h1)
+            self._update_instruction(f'Два пика выбраны! Пик 1: H={self.selected_peaks[0][0]:.2f} Э, '
+                                    f'f={self.selected_peaks[0][1]:.6f} ГГц | '
+                                    f'Пик 2: H={self.selected_peaks[1][0]:.2f} Э, '
+                                    f'f={self.selected_peaks[1][1]:.6f} ГГц | '
+                                    f'Разница: Δf={freq_diff:.6f} ГГц, ΔH={field_diff:.1f} Э')
+            self.mode = None
+    
+    def _handle_example_fields(self, freq, field):
+        """
+        Обработка выбора полей для примеров фиттинга
+        
+        Пользователь кликает по полям, программа сохраняет их для визуализации примеров
+        """
+        import config_physics
+        
+        # Найти ближайшее поле из массива данных
+        field_array = self.data['field']
+        field_idx = np.argmin(np.abs(field_array - field))
+        field_actual = field_array[field_idx]
+        
+        # Проверить, не выбрано ли это поле уже
+        if field_actual in self.example_fields:
+            print(f"  ⚠ Поле {field_actual:.2f} Э уже выбрано")
+            return
+        
+        self.example_fields.append(field_actual)
+        
+        # Цвет для маркера
+        color = 'red'
+        
+        # Рисуем горизонтальную линию на выбранном поле
+        freq_range = self.data['freq']
+        line, = self.ax.plot(freq_range, [field_actual]*len(freq_range), 
+                            color=color, linewidth=2, alpha=0.7, linestyle='--')
+        self.lines.append(line)
+        
+        # Добавляем текст с номером примера
+        text = self.ax.text(freq_range[0], field_actual, f' Пример {len(self.example_fields)}', 
+                           fontsize=10, color=color, fontweight='bold',
+                           bbox=dict(boxstyle='round,pad=0.3', facecolor='white', 
+                                    edgecolor=color, alpha=0.8))
+        self.markers.append(text)
+        
+        self.fig.canvas.draw()
+        
+        num_examples = config_physics.NUM_EXAMPLE_FITS
+        if len(self.example_fields) < num_examples:
+            self._update_instruction(f'Поле {len(self.example_fields)}: H={field_actual:.2f} Э выбрано. '
+                                    f'Кликните еще {num_examples - len(self.example_fields)} полей '
+                                    f'(всего нужно {num_examples})')
+        else:
+            self._update_instruction(f'Выбрано {len(self.example_fields)} полей для примеров фиттинга: '
+                                    f'{[f"{f:.1f}" for f in self.example_fields]} Э')
+            self.mode = None
+    
     def _update_instruction(self, text):
         """Обновить текст инструкции"""
         self.instruction_text.set_text(text)
@@ -452,6 +531,8 @@ class InteractiveParameterSelector:
         self.cavity_width = None
         self.mode_separations = []
         self.cavity_fit_region = None
+        self.selected_peaks = []  # Очистить выбранные пики
+        self.example_fields = []  # Очистить поля примеров
         self.temp_points = []
         self.mode = None
         
@@ -465,6 +546,7 @@ class InteractiveParameterSelector:
         
         # Формируем строки для сохранения
         lines = []
+        lines.append("import numpy as np\n")
         lines.append("\n# =============================================================================\n")
         lines.append("# ИНТЕРАКТИВНО ВЫБРАННЫЕ ПАРАМЕТРЫ\n")
         lines.append("# =============================================================================\n")
@@ -500,6 +582,16 @@ class InteractiveParameterSelector:
             lines.append(f"INTERACTIVE_CAVITY_FIT_REGION = {self.cavity_fit_region}\n")
             lines.append("\n")
         
+        if self.selected_peaks:
+            lines.append("# Выбранные пики для отслеживания [(field, freq), (field, freq)]\n")
+            lines.append(f"INTERACTIVE_SELECTED_PEAKS = {self.selected_peaks}\n")
+            lines.append("\n")
+        
+        if self.example_fields:
+            lines.append("# Поля для примеров фиттинга [field1, field2, ...]\n")
+            lines.append(f"INTERACTIVE_EXAMPLE_FIELDS = {self.example_fields}\n")
+            lines.append("\n")
+        
         # Путь к файлу конфига
         config_path = os.path.join(os.path.dirname(config_physics.__file__), 
                                    'config_interactive.py')
@@ -533,7 +625,9 @@ class InteractiveParameterSelector:
             'magnon_widths': self.magnon_widths,
             'cavity_width': self.cavity_width,
             'mode_separations': self.mode_separations,
-            'cavity_fit_region': self.cavity_fit_region
+            'cavity_fit_region': self.cavity_fit_region,
+            'selected_peaks': self.selected_peaks,  # Добавляем выбранные пики
+            'example_fields': self.example_fields  # Добавляем поля примеров
         }
 
 
@@ -572,7 +666,7 @@ def plot_interactive_contour_map(data, title=''):
     freq_grid, field_grid = np.meshgrid(freq, field)
     
     # Создание фигуры с увеличенным пространством слева для кнопок
-    fig = plt.figure(figsize=(14, 8))
+    fig = plt.figure(figsize=(12, 7))
     
     # Основной график (смещен вправо для кнопок)
     ax = fig.add_axes([0.25, 0.15, 0.7, 0.75])

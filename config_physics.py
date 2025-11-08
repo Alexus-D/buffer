@@ -11,11 +11,55 @@ import config_interactive
 # ФИЗИЧЕСКИЕ КОНСТАНТЫ
 # =============================================================================
 
+MIN_VALID_FIELD = 10  # Э
+
 # Гиромагнитное отношение (ГГц/Э)
 GYROMAGNETIC_RATIO = 2.8e-3
 
-FIELD_RANGE = [2875, 3025]  # Э
+FIELD_RANGE = [1675, 1780]  # Э
 FREQ_RANGE = None    # ГГц
+
+# =============================================================================
+# ПАРАМЕТРЫ ФИТТИНГА ПИКОВ
+# =============================================================================
+
+# Тип пиков в данных: 'maximum' для максимумов, 'minimum' для минимумов (провалов)
+# Используется для отслеживания собственных частот системы
+# 
+# Примеры:
+#   - S21 резонатора обычно показывает МАКСИМУМЫ на резонансах → PEAK_TYPE = 'maximum'
+#   - S21 с провалами (антирезонансы) → PEAK_TYPE = 'minimum'
+#
+# Этот параметр влияет на:
+#   1. Поиск пиков (максимумы или минимумы)
+#   2. Модель Лоренца (положительные или отрицательные пики)
+#   3. Начальные параметры фиттинга
+#
+PEAK_TYPE = 'maximum'  # 'maximum' или 'minimum'
+
+# Режим фиттинга двух пиков:
+#   'combined' - фитить оба пика одновременно одной комбинированной моделью (по умолчанию)
+#   'separate' - фитить каждый пик отдельно своим лоренцианом
+#
+# В режиме 'separate':
+#   - Каждый пик фитится независимо в своем диапазоне
+#   - При визуализации показываются две отдельные линии фита
+#   - Может быть более стабильным для слабо перекрывающихся пиков
+#
+FIT_MODE = 'separate'  # 'combined' или 'separate'
+
+# Коэффициент для автоматической подстройки ширины диапазона при перецентровке
+# При итеративной перецентровке диапазона новая ширина = RANGE_WIDTH_MULTIPLIER * fitted_width
+# Рекомендуемые значения: 1.2 - 1.5
+# Меньше 1.2 - может быть слишком узко, больше 1.5 - может захватить лишние данные
+RANGE_WIDTH_MULTIPLIER = 7  # Ширина диапазона = 1.3 * ширина подогнанного пика
+
+# Количество примеров фиттинга для визуализации
+# Используется в plot_example_peak_fits для показа результатов на выбранных полях
+NUM_EXAMPLE_FITS = 6  # По умолчанию 6 примеров
+
+FIELD_RANGE = [MIN_VALID_FIELD, None] if FIELD_RANGE is None else list(FIELD_RANGE)
+FIELD_RANGE = [max(FIELD_RANGE[0], MIN_VALID_FIELD), FIELD_RANGE[1]] if MIN_VALID_FIELD is not None else FIELD_RANGE
 
 # =============================================================================
 # ПАРАМЕТРЫ МОД ФМР
@@ -37,13 +81,19 @@ NUM_FMR_MODES = len(FMR_MODE_CALIBRATIONS)
 # Взято из generate_test_data.py
 
 # Резонансная частота резонатора (ГГц)
-CAVITY_FREQUENCY = config_interactive.INTERACTIVE_CAVITY_FREQUENCY
+CAVITY_FREQUENCY = getattr(config_interactive, 'INTERACTIVE_CAVITY_FREQUENCY', 3.65)
 
 # Внешние потери резонатора (ГГц)
-CAVITY_EXTERNAL_LOSS = (config_interactive.INTERACTIVE_CAVITY_WIDTH[1] - config_interactive.INTERACTIVE_CAVITY_WIDTH[0]) * 0.9
+if hasattr(config_interactive, 'INTERACTIVE_CAVITY_WIDTH') and config_interactive.INTERACTIVE_CAVITY_WIDTH is not None:
+    CAVITY_EXTERNAL_LOSS = (config_interactive.INTERACTIVE_CAVITY_WIDTH[1] - config_interactive.INTERACTIVE_CAVITY_WIDTH[0]) * 0.9
+else:
+    CAVITY_EXTERNAL_LOSS = 0.002
 
 # Внутренние потери резонатора (ГГц)
-CAVITY_INTERNAL_LOSS = (config_interactive.INTERACTIVE_CAVITY_WIDTH[1] - config_interactive.INTERACTIVE_CAVITY_WIDTH[0]) * 0.1
+if hasattr(config_interactive, 'INTERACTIVE_CAVITY_WIDTH') and config_interactive.INTERACTIVE_CAVITY_WIDTH is not None:
+    CAVITY_INTERNAL_LOSS = (config_interactive.INTERACTIVE_CAVITY_WIDTH[1] - config_interactive.INTERACTIVE_CAVITY_WIDTH[0]) * 0.1
+else:
+    CAVITY_INTERNAL_LOSS = 0.0002
 
 # =============================================================================
 # НАЧАЛЬНЫЕ ПАРАМЕТРЫ СВЯЗИ
@@ -66,5 +116,3 @@ MAGNON_EXTERNAL_LOSS = 0.0000244
 
 # Внутренние потери магнонных мод (ГГц)
 MAGNON_INTERNAL_LOSS = 0.000963
-
-MIN_VALID_FIELD = 10  # Э

@@ -625,8 +625,8 @@ def find_dip_around_point(data, freq_click, field_click, search_radius_freq=0.05
     s_param_subset = np.abs(s_param)[np.ix_(field_mask, freq_mask)]
     
     # Найти минимум (провал)
-    min_idx_flat = np.argmin(s_param_subset)
-    min_idx_2d = np.unravel_index(min_idx_flat, s_param_subset.shape)
+    min_idx_flat = np.argmin(s_param_subset)  # Realise search of dip via scipy search peak TO DO!!!
+    min_idx_2d = np.unravel_index(min_idx_flat, s_param_subset.shape)  # Realise search of dip via scipy search peak TO DO!!!
     
     field_dip = field_subset[min_idx_2d[0]]
     freq_dip = freq_subset[min_idx_2d[1]]

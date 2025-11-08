@@ -3,6 +3,29 @@
 
 Автор: Alexey Kaminskiy
 Дата создания: 2025-10-09
+Обновлено: 2025-10-28 - Добавлен режим отслеживания собственных частот
+
+РЕЖИМЫ РАБОТЫ:
+===============
+
+1. ОБЫЧНЫЙ РЕЖИМ (INTERACTIVE = False):
+   - Фиттинг теоретической модели связанных осцилляторов
+   - Извлечение парциальных параметров (wc, wm, J, Γ, потери)
+   - Использует параметры из config_physics.py
+
+2. ИНТЕРАКТИВНЫЙ РЕЖИМ - ФИТТИНГ МОДЕЛИ (INTERACTIVE = True):
+   - Выбор калибровочных точек и параметров кликами мыши
+   - Предварительный фиттинг резонатора
+   - Фиттинг теоретической модели с интерактивными параметрами
+
+3. ИНТЕРАКТИВНЫЙ РЕЖИМ - ОТСЛЕЖИВАНИЕ ПИКОВ (INTERACTIVE = True + выбор 2 пиков):
+   - Нажмите кнопку "Выбрать 2 пика" в интерактивном окне
+   - Кликните на два пика (провала) в спектре
+   - Программа автоматически отследит пики по всем полям
+   - Аппроксимация двумя лоренцианами
+   - Извлечение собственных частот, ширин и амплитуд пиков
+   - Построение графиков зависимостей от поля
+   - Сохранение результатов в CSV
 """
 
 import os
@@ -19,6 +42,7 @@ import visualization
 import data_io
 import fitting
 import interactive
+import peak_tracking  # Новый модуль для отслеживания пиков
 
 
 def main(interactive_mode=False):
@@ -138,6 +162,150 @@ def main(interactive_mode=False):
             print("Интерактивный режим завершен, продолжаем основной анализ...")
             print(f"{'='*70}")
             # НЕ ДЕЛАЕМ return - продолжаем выполнение!
+            
+            # Перезагрузить config_interactive чтобы прочитать сохраненные параметры
+            import importlib
+            import config_interactive
+            importlib.reload(config_interactive)
+            # Перезагрузить config_physics тоже, так как он импортирует config_interactive
+            importlib.reload(config_physics)
+            
+            # Проверить, есть ли сохраненные пики в файле
+            selected_peaks = getattr(config_interactive, 'INTERACTIVE_SELECTED_PEAKS', None)
+            if selected_peaks:
+                interactive_params['selected_peaks'] = selected_peaks
+                print(f"\n✓ Загружены выбранные пики из config_interactive.py: {len(selected_peaks)} пик(а)")
+            
+            # Проверить, есть ли сохраненные поля для примеров
+            example_fields = getattr(config_interactive, 'INTERACTIVE_EXAMPLE_FIELDS', None)
+            if example_fields:
+                interactive_params['example_fields'] = example_fields
+                print(f"✓ Загружены поля для примеров фиттинга: {len(example_fields)} полей")
+            
+            # =================================================================
+            # ПРОВЕРКА: БЫЛ ЛИ ВЫБРАН РЕЖИМ ОТСЛЕЖИВАНИЯ ПИКОВ
+            # =================================================================
+            if interactive_params.get('selected_peaks') and len(interactive_params['selected_peaks']) == 2:
+                print(f"\n{'='*70}")
+                print("РЕЖИМ ОТСЛЕЖИВАНИЯ СОБСТВЕННЫХ ЧАСТОТ")
+                print(f"{'='*70}")
+                print("Обнаружены выбранные пики для отслеживания.")
+                print("Будет выполнен анализ отслеживания собственных частот системы.")
+                print(f"{'='*70}\n")
+                
+                # Извлечь выбранные пики
+                peak1, peak2 = interactive_params['selected_peaks']
+                
+                print(f"Выбранные пики:")
+                print(f"  Пик 1: H={peak1[0]:.2f} Э, f={peak1[1]:.6f} ГГц")
+                print(f"  Пик 2: H={peak2[0]:.2f} Э, f={peak2[1]:.6f} ГГц")
+                
+                # Создание директории для результатов (если еще не создана)
+                if 'results_dir' not in locals():
+                    results_dir = data_io.create_results_directory(config_data.RESULTS_DIR)
+                    print(f"\nДиректория результатов: {results_dir}")
+                
+                # Отслеживание пиков по всем полям
+                print(f"\nОтслеживание пиков по всем значениям поля...")
+                print(f"ИНТЕРАКТИВНЫЙ РЕЖИМ: После каждого фиттинга проверяйте результат")
+                print(f"  • Нажмите 'y' если фиттинг устраивает")
+                print(f"  • Кликните на два новых пика для переподгонки")
+                print(f"  • Нажмите 'n' для пропуска поля")
+                print(f"  • Закройте окно для завершения")
+                
+                peak_results = peak_tracking.track_peaks_across_fields(
+                    data, peak1, peak2, verbose=True, interactive=True
+                )
+                
+                if peak_results:
+                    # Сохранение результатов
+                    print(f"\n{'='*70}")
+                    print("Сохранение результатов отслеживания пиков...")
+                    print(f"{'='*70}")
+                    
+                    peak_tracking.save_peak_tracking_results(
+                        peak_results, results_dir, 'peak_parameters.csv'
+                    )
+                    
+                    peak_tracking.save_peak_tracking_summary(
+                        peak_results, results_dir, 'peak_tracking_summary.txt'
+                    )
+                    
+                    # Визуализация результатов
+                    print(f"\n{'='*70}")
+                    print("Построение графиков отслеживания пиков...")
+                    print(f"{'='*70}")
+                    
+                    # График собственных частот vs поле
+                    freq_path = os.path.join(results_dir, 'eigenfrequencies_vs_field.png')
+                    visualization.plot_eigenfrequencies_vs_field(
+                        peak_results, save_path=freq_path, show=True
+                    )
+                    
+                    # График ширин пиков vs поле
+                    width_path = os.path.join(results_dir, 'peak_widths_vs_field.png')
+                    visualization.plot_peak_widths_vs_field(
+                        peak_results, save_path=width_path, show=True
+                    )
+                    
+                    # График амплитуд пиков vs поле
+                    amp_path = os.path.join(results_dir, 'peak_amplitudes_vs_field.png')
+                    visualization.plot_peak_amplitudes_vs_field(
+                        peak_results, save_path=amp_path, show=True
+                    )
+                    
+                    # График качества подгонки vs поле
+                    quality_path = os.path.join(results_dir, 'peak_fit_quality_vs_field.png')
+                    visualization.plot_peak_fit_quality_vs_field(
+                        peak_results, save_path=quality_path, show=True
+                    )
+                    
+                    # Сводный график
+                    summary_path = os.path.join(results_dir, 'peak_tracking_summary.png')
+                    visualization.plot_peak_tracking_summary(
+                        peak_results, save_path=summary_path, show=True
+                    )
+                    
+                    # Примеры аппроксимации для нескольких полей
+                    examples_path = os.path.join(results_dir, 'example_peak_fits.png')
+                    
+                    # Использовать выбранные пользователем поля или равномерное распределение
+                    example_fields = interactive_params.get('example_fields')
+                    if example_fields:
+                        # Преобразовать значения полей в индексы
+                        field_indices = []
+                        for field_val in example_fields:
+                            idx = np.argmin(np.abs(data['field'] - field_val))
+                            field_indices.append(idx)
+                        print(f"\nИспользуются выбранные поля для примеров: {len(field_indices)} полей")
+                    else:
+                        field_indices = None  # Функция использует равномерное распределение по умолчанию
+                    
+                    visualization.plot_example_peak_fits(
+                        data, peak_results, save_path=examples_path, show=True, field_indices=field_indices
+                    )
+                    
+                    print(f"\n{'='*70}")
+                    print("✓ ОТСЛЕЖИВАНИЕ ПИКОВ ЗАВЕРШЕНО")
+                    print(f"{'='*70}")
+                    print(f"Обработано полей: {len(peak_results)}")
+                    print(f"Все результаты сохранены в: {results_dir}")
+                    print(f"{'='*70}\n")
+                    
+                    # Завершаем выполнение, так как отслеживание пиков - альтернативный режим
+                    return
+                else:
+                    print(f"\n✗ ОШИБКА: Отслеживание пиков не удалось")
+                    return  # Завершаем программу
+            else:
+                # В интерактивном режиме пики не были выбраны - завершаем программу
+                print(f"\n{'='*70}")
+                print("ЗАВЕРШЕНИЕ РАБОТЫ")
+                print(f"{'='*70}")
+                print("Пики для отслеживания не были выбраны.")
+                print("Для фиттинга модели антикроссинга установите INTERACTIVE = False в main.py")
+                print(f"{'='*70}\n")
+                return
             
         except Exception as e:
             print(f"✗ ОШИБКА в интерактивном режиме: {e}")
@@ -394,5 +562,6 @@ def main(interactive_mode=False):
 
 
 if __name__ == "__main__":
-    INTERACTIVE = False
+    # РЕЖИМ: True = интерактивный выбор пиков, False = обычный фиттинг модели
+    INTERACTIVE = True
     main(interactive_mode=INTERACTIVE)

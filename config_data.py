@@ -11,7 +11,7 @@ import os
 # =============================================================================
 
 # Имя файла с данными (реальные данные)
-FILENAME = 'CoherentCoupling_S21.txt'
+FILENAME = 'Hybrid resonator and sphere S21.txt'
  
 # Корневая директория проекта
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -47,8 +47,8 @@ SKIP_ROWS = 0
 # Использовать логарифмическую шкалу для S-параметров
 USE_DB_SCALE = True
 
-# Формат комплексных чисел ('magnitude_phase', 'real_imag', 'db_phase', 'db_amplitude')
-COMPLEX_FORMAT = 'db_amplitude'
+# Формат комплексных чисел ('magnitude_phase', 'real_imag', 'db_phase', 'db_amplitude', 'linear_amplitude')
+COMPLEX_FORMAT = 'linear_amplitude'
 
 # =============================================================================
 # ПАРАМЕТРЫ СОХРАНЕНИЯ РЕЗУЛЬТАТОВ
