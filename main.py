@@ -83,22 +83,173 @@ def main(interactive_mode=False):
         print(f"✗ ОШИБКА при загрузке данных: {e}")
         return
     
-    # Если интерактивный режим - запускаем выбор параметров, затем фиттинг резонатора
+    # ==========================================================================
+    # ЭТАП 1: ПРЕДОБРАБОТКА (если в интерактивном режиме)
+    # Сначала выбираем диапазон для предобработки, очищаем данные,
+    # затем все остальные действия выполняются на очищенных данных
+    # ==========================================================================
+    
+    original_data = None
+    harmonic_info = None
+    
     if interactive_mode:
         print(f"\n{'='*70}")
-        print("ИНТЕРАКТИВНЫЙ РЕЖИМ")
+        print("ЭТАП 1: ВЫБОР ДИАПАЗОНА ПРЕДОБРАБОТКИ И ДАННЫХ")
         print(f"{'='*70}")
         print("Инструкция:")
-        print("1. Нажмите на одну из кнопок слева для выбора режима")
-        print("2. Кликайте мышью на контурной карте для указания параметров")
-        print("3. Нажмите 'Сохранить' для сохранения параметров в config_interactive.py")
-        print("4. Нажмите 'Очистить' для сброса всех выбранных параметров")
+        print("1. (Опционально) Нажмите 'Диапазон предобработки' для выбора области с паразитными гармониками")
+        print("2. (Опционально) Нажмите 'Диапазон данных' для выбора рабочего диапазона (частоты + поля)")
+        print("3. Если не нужна предобработка и обрезка - просто закройте окно")
+        print(f"{'='*70}\n")
+        
+        try:
+            # Первый интерактивный режим - для предобработки и выбора диапазона данных
+            selector_preprocessing = interactive.plot_interactive_contour_map(
+                data=data,
+                title=f'ШАГ 1: Предобработка и выбор диапазона данных - {data["s_type"]}'
+            )
+            
+            # Получить диапазон предобработки и диапазон данных
+            preprocessing_params = selector_preprocessing.get_parameters()
+            preprocessing_range = preprocessing_params.get('preprocessing_range')
+            data_range = preprocessing_params.get('data_range')
+            
+            if preprocessing_range is not None:
+                print(f"\n{'='*70}")
+                print("ПРЕДОБРАБОТКА: УДАЛЕНИЕ ПАРАЗИТНЫХ ГАРМОНИК")
+                print(f"{'='*70}")
+                
+                import preprocessing
+                
+                # Получаем диапазоны
+                freq_range = preprocessing_range['freq_range']
+                field_range = preprocessing_range['field_range']
+                
+                print(f"\nВыбранная область с ТОЛЬКО паразитными гармониками:")
+                print(f"  Частоты: {freq_range[0]:.3f} - {freq_range[1]:.3f} ГГц")
+                print(f"  Поля:    {field_range[0]:.1f} - {field_range[1]:.1f} Э")
+                print(f"\nАлгоритм:")
+                print(f"  1. Усреднение данных в этой области")
+                print(f"  2. Вычисление FFT ('спектр спектра')")
+                print(f"  3. Восстановление на полный диапазон частот")
+                print(f"  4. Вычитание из всех спектров")
+                
+                # Сохраняем исходные данные для визуализации
+                original_data = {
+                    'freq': data['freq'].copy(),
+                    'field': data['field'].copy(),
+                    's_param': data['s_param'].copy(),
+                    's_type': data.get('s_type', 'S21'),
+                    'filepath': data.get('filepath', '')
+                }
+                
+                # Выполняем полную предобработку
+                cleaned_data, harmonic_info = preprocessing.remove_parasitic_harmonics(
+                    data=data,
+                    freq_range_for_avg=freq_range,
+                    field_range_for_avg=field_range,
+                    verbose=True
+                )
+                
+                # ЗАМЕНЯЕМ данные на очищенные для всех последующих операций
+                data = cleaned_data
+                
+                print(f"\n✓ Предобработка завершена! Данные очищены от паразитных гармоник.")
+                
+                # Обрезка данных по выбранному диапазону (если выбран)
+                if data_range is not None:
+                    print(f"\n{'='*70}")
+                    print("ОБРЕЗКА ДАННЫХ ПО ВЫБРАННОМУ ДИАПАЗОНУ")
+                    print(f"{'='*70}")
+                    
+                    freq_range_cut = data_range['freq_range']
+                    field_range_cut = data_range['field_range']
+                    
+                    print(f"\nВыбранный диапазон данных для работы:")
+                    print(f"  Частоты: {freq_range_cut[0]:.3f} - {freq_range_cut[1]:.3f} ГГц")
+                    print(f"  Поля:    {field_range_cut[0]:.1f} - {field_range_cut[1]:.1f} Э")
+                    
+                    # Обрезаем данные с помощью готовой функции
+                    data = data_io.filter_data_by_range(
+                        data, 
+                        field_range=field_range_cut, 
+                        freq_range=freq_range_cut
+                    )
+                    
+                    print(f"\n✓ Данные обрезаны!")
+                    print(f"  Новый размер по частоте: {len(data['freq'])} точек")
+                    print(f"  Новый размер по полю: {len(data['field'])} точек")
+                    print(f"  Новый диапазон частот: {data['freq'].min():.3f} - {data['freq'].max():.3f} ГГц")
+                    print(f"  Новый диапазон полей: {data['field'].min():.1f} - {data['field'].max():.1f} Э")
+                
+                print(f"\n✓ Все последующие операции будут выполняться на ОЧИЩЕННЫХ данных.")
+                
+                # Показываем очищенную контурную карту
+                print(f"\nОтображение очищенных данных...")
+                visualization.plot_contour_map(
+                    data,
+                    title=f'Очищенные данные - {data["s_type"]}',
+                    show=True
+                )
+            elif data_range is not None:
+                # Предобработка не выбрана, но выбран диапазон данных - обрезаем исходные данные
+                print(f"\n{'='*70}")
+                print("ОБРЕЗКА ДАННЫХ ПО ВЫБРАННОМУ ДИАПАЗОНУ")
+                print(f"{'='*70}")
+                
+                freq_range_cut = data_range['freq_range']
+                field_range_cut = data_range['field_range']
+                
+                print(f"\nВыбранный диапазон данных для работы:")
+                print(f"  Частоты: {freq_range_cut[0]:.3f} - {freq_range_cut[1]:.3f} ГГц")
+                print(f"  Поля:    {field_range_cut[0]:.1f} - {field_range_cut[1]:.1f} Э")
+                
+                # Обрезаем данные с помощью готовой функции
+                data = data_io.filter_data_by_range(
+                    data, 
+                    field_range=field_range_cut, 
+                    freq_range=freq_range_cut
+                )
+                
+                print(f"\n✓ Данные обрезаны!")
+                print(f"  Новый размер по частоте: {len(data['freq'])} точек")
+                print(f"  Новый размер по полю: {len(data['field'])} точек")
+                print(f"  Новый диапазон частот: {data['freq'].min():.3f} - {data['freq'].max():.3f} ГГц")
+                print(f"  Новый диапазон полей: {data['field'].min():.1f} - {data['field'].max():.1f} Э")
+            else:
+                print(f"\n{'='*70}")
+                print("Предобработка не выбрана. Используем исходные данные.")
+                print(f"{'='*70}\n")
+        
+        except Exception as e:
+            print(f"✗ ОШИБКА при выборе диапазона предобработки: {e}")
+            import traceback
+            traceback.print_exc()
+            return
+    
+    # ==========================================================================
+    # ЭТАП 2: ОСНОВНОЙ ИНТЕРАКТИВНЫЙ РЕЖИМ
+    # Выбор резонатора, пиков и полей для примеров на (возможно очищенных) данных
+    # ==========================================================================
+    
+    if interactive_mode:
+        print(f"\n{'='*70}")
+        print("ЭТАП 2: ОСНОВНОЙ ИНТЕРАКТИВНЫЙ РЕЖИМ")
+        print(f"{'='*70}")
+        print("Инструкция:")
+        print("1. Нажмите 'Диапазон резонатора' для выбора резонансной частоты")
+        print("2. Нажмите 'Выбрать 2 пика' для отслеживания собственных частот")
+        print("3. Опционально: 'Поля примеров' для выбора полей визуализации")
+        print("4. Нажмите 'Сохранить' для сохранения параметров")
+        print(f"{'='*70}\n")
+        print("3. Опционально: 'Поля примеров' для выбора полей визуализации")
+        print("4. Нажмите 'Сохранить' для сохранения параметров")
         print(f"{'='*70}\n")
         
         try:
             selector = interactive.plot_interactive_contour_map(
                 data=data,
-                title=f'Интерактивный выбор параметров - {data["s_type"]}'
+                title=f'ШАГ 2: Выбор резонатора и пиков - {data["s_type"]} ({"очищенные" if original_data is not None else "исходные"} данные)'
             )
             print(f"\n{'='*70}")
             print("Интерактивный режим: выбор параметров завершен")
@@ -106,6 +257,9 @@ def main(interactive_mode=False):
             
             # Получить интерактивно выбранные параметры
             interactive_params = selector.get_parameters()
+            
+            # Инициализация переменной для параметров резонатора
+            fitted_cavity_params_for_main = None
             
             # Проверить, был ли выбран диапазон фиттинга резонатора
             if interactive_params.get('cavity_fit_region') is not None:
@@ -117,17 +271,18 @@ def main(interactive_mode=False):
                 results_dir = data_io.create_results_directory(config_data.RESULTS_DIR)
                 print(f"Директория результатов: {results_dir}")
                 
-                # Извлечь начальные параметры резонатора
+                # Извлечь начальные параметры резонатора (на очищенных данных!)
                 print("\nИзвлечение начальных параметров резонатора...")
                 initial_cavity_params = fitting.estimate_cavity_parameters_from_interactive(
-                    interactive_params, data, interactive_params['cavity_fit_region']
+                    interactive_params, data, interactive_params['cavity_fit_region'],
+                    from_formula=True
                 )
                 print(f"  Начальные параметры:")
                 print(f"  - wc = {initial_cavity_params['wc']:.6f} ГГц")
                 print(f"  - kappa = {initial_cavity_params['kappa']:.6f} ГГц")
                 print(f"  - beta = {initial_cavity_params['beta']:.6f} ГГц")
                 
-                # Выполнить фиттинг резонатора
+                # Выполнить фиттинг резонатора (на очищенных данных!)
                 print("\nВыполнение фиттинга резонатора...")
                 fitted_cavity_params, fit_quality, fitted_spectrum = fitting.fit_cavity_only(
                     data, 
@@ -147,7 +302,7 @@ def main(interactive_mode=False):
                 
                 print(f"\n{'='*70}")
                 print("Предварительный фиттинг резонатора завершен")
-                print(f"Подогнанные параметры будут использованы для фиттинга антикроссинга")
+                print(f"Подогнанные параметры будут использованы для извлечения параметров связи")
                 print(f"{'='*70}")
                 
                 # Сохраняем подогнанные параметры для использования в основном фиттинге
@@ -157,6 +312,30 @@ def main(interactive_mode=False):
                 print("\nДиапазон фиттинга резонатора не был выбран.")
                 print("Будут использованы параметры из config_physics.")
                 fitted_cavity_params_for_main = None
+            
+            # =================================================================
+            # ПРОВЕРКА: БЫЛ ЛИ ЗАПРОШЕН РУЧНОЙ РЕЖИМ ВЫБОРА ПИКОВ
+            # =================================================================
+            if interactive_params.get('manual_mode_requested', False):
+                print(f"\n{'='*70}")
+                print("ЗАПУСК РУЧНОГО РЕЖИМА ВЫБОРА ПИКОВ")
+                print(f"{'='*70}")
+                
+                # Импортируем модуль ручного выбора
+                import interactive_manual_peak_selection
+                
+                # Запускаем ручной режим с данными и параметрами резонатора
+                interactive_manual_peak_selection.run_manual_peak_selection(
+                    data=data,
+                    cavity_params=fitted_cavity_params_for_main
+                )
+                
+                print(f"\n{'='*70}")
+                print("РУЧНОЙ РЕЖИМ ЗАВЕРШЕН")
+                print(f"{'='*70}")
+                
+                # После ручного режима завершаем выполнение
+                return
             
             print(f"\n{'='*70}")
             print("Интерактивный режим завершен, продолжаем основной анализ...")
@@ -285,6 +464,94 @@ def main(interactive_mode=False):
                         data, peak_results, save_path=examples_path, show=True, field_indices=field_indices
                     )
                     
+                    # Сохранить результаты предобработки, если она выполнялась
+                    if 'original_data' in locals() and original_data is not None and 'harmonic_info' in locals() and harmonic_info is not None:
+                        print(f"\nСохранение результатов предобработки...")
+                        preprocessing_plot_path = os.path.join(results_dir, 'preprocessing_results.png')
+                        visualization.plot_preprocessing_results(
+                            original_data=original_data,
+                            cleaned_data=data,
+                            harmonic_info=harmonic_info,
+                            save_path=preprocessing_plot_path,
+                            show=False
+                        )
+                        print(f"✓ Результаты предобработки сохранены: {preprocessing_plot_path}")
+                    
+                    # =====================================================================
+                    # ИЗВЛЕЧЕНИЕ ПАРАМЕТРОВ СВЯЗИ ИЗ ОТСЛЕЖЕННЫХ ПИКОВ
+                    # =====================================================================
+                    
+                    # Проверяем, был ли выполнен фиттинг резонатора
+                    if fitted_cavity_params_for_main is not None:
+                        print(f"\n{'='*70}")
+                        print("ИЗВЛЕЧЕНИЕ ПАРАМЕТРОВ СВЯЗИ")
+                        print(f"{'='*70}")
+                        
+                        import parameter_extraction
+                        
+                        # Извлекаем параметры связи (alpha, gamma, J, Gamma)
+                        coupling_results = parameter_extraction.extract_coupling_parameters(
+                            peak_results=peak_results,
+                            cavity_params=fitted_cavity_params_for_main,
+                            verbose=True
+                        )
+                        
+                        # Сохраняем результаты
+                        print(f"\nСохранение параметров связи...")
+                        coupling_csv_path = os.path.join(results_dir, 'coupling_parameters.csv')
+                        peak_tracking.save_coupling_parameters(coupling_results, coupling_csv_path)
+                        
+                        # Визуализация параметров связи vs поле
+                        coupling_plot_path = os.path.join(results_dir, 'coupling_parameters_vs_field.png')
+                        visualization.plot_coupling_parameters_vs_field(
+                            coupling_results, save_path=coupling_plot_path, show=True
+                        )
+                        
+                        # =====================================================================
+                        # ПОСТРОЕНИЕ МОДЕЛИ S-ПАРАМЕТРА И СРАВНЕНИЕ С ЭКСПЕРИМЕНТОМ
+                        # =====================================================================
+                        
+                        print(f"\n{'='*70}")
+                        print("ПОСТРОЕНИЕ МОДЕЛИ S-ПАРАМЕТРА")
+                        print(f"{'='*70}")
+                        
+                        # Вычисляем S-параметр по модели
+                        s_type = data.get('s_type', 'S21')
+                        s_param_model = parameter_extraction.compute_s_parameter_model(
+                            freq=data['freq'],
+                            field=data['field'],
+                            cavity_params=fitted_cavity_params_for_main,
+                            coupling_results=coupling_results,
+                            s_type=s_type
+                        )
+                        
+                        # Создаем словарь для модельных данных
+                        model_data = {
+                            'freq': data['freq'],
+                            'field': data['field'],
+                            's_param': s_param_model,
+                            's_type': s_type
+                        }
+                        
+                        print(f"✓ Модель S-параметра вычислена")
+                        
+                        # Сравнение модели с экспериментом
+                        print(f"\nПостроение сравнительных графиков...")
+                        comparison_path = os.path.join(results_dir, 'model_vs_experiment.png')
+                        visualization.plot_model_vs_experiment(
+                            experimental_data=data,
+                            model_data=model_data,
+                            save_path=comparison_path,
+                            show=True
+                        )
+                        
+                        print(f"\n{'='*70}")
+                        print("✓ ПАРАМЕТРЫ СВЯЗИ ИЗВЛЕЧЕНЫ И МОДЕЛЬ ПОСТРОЕНА")
+                        print(f"{'='*70}")
+                    else:
+                        print(f"\n⚠ Фиттинг резонатора не был выполнен.")
+                        print(f"   Для извлечения параметров связи выберите 'Диапазон резонатора' в интерактивном режиме.")
+                    
                     print(f"\n{'='*70}")
                     print("✓ ОТСЛЕЖИВАНИЕ ПИКОВ ЗАВЕРШЕНО")
                     print(f"{'='*70}")
@@ -316,12 +583,43 @@ def main(interactive_mode=False):
         # Обычный режим (не интерактивный) - параметры резонатора не подгонялись
         fitted_cavity_params_for_main = None
     
+    # ==========================================================================
+    # ФИТТИНГ МОДЕЛИ АНТИКРОССИНГА (только если НЕ в режиме отслеживания пиков)
+    # ==========================================================================
+    
     # Создание директории для результатов
     print(f"\nСоздание директории результатов...")
     results_dir = data_io.create_results_directory(config_data.RESULTS_DIR)
     print(f"✓ Директория создана: {results_dir}")
     
-    # Построение и сохранение контурной карты
+    # Если была предобработка - сохраняем визуализацию и показываем контурную карту
+    if original_data is not None and harmonic_info is not None:
+        print(f"\nСохранение и отображение результатов предобработки...")
+        preprocessing_plot_path = os.path.join(results_dir, 'preprocessing_results.png')
+        visualization.plot_preprocessing_results(
+            original_data=original_data,
+            cleaned_data=data,
+            harmonic_info=harmonic_info,
+            save_path=preprocessing_plot_path,
+            show=False
+        )
+        print(f"✓ Результаты предобработки сохранены: {preprocessing_plot_path}")
+        
+        # Показываем контурную карту очищенных данных
+        print(f"\nПостроение контурной карты ОЧИЩЕННЫХ данных...")
+        cleaned_contour_path = os.path.join(results_dir, f'contour_map_{data["s_type"]}_cleaned.png')
+        try:
+            visualization.plot_contour_map(
+                data=data,
+                title=f'Контурная карта |{data["s_type"]}| (после удаления паразитных гармоник)',
+                save_path=cleaned_contour_path,
+                show=True  # Показываем сразу для проверки
+            )
+            print(f"✓ Контурная карта очищенных данных сохранена и отображена")
+        except Exception as e:
+            print(f"✗ ОШИБКА при построении контурной карты очищенных данных: {e}")
+    
+    # Построение и сохранение контурной карты (исходных или очищенных данных)
     print(f"\nПостроение контурной карты...")
     save_path = os.path.join(results_dir, f'contour_map_{data["s_type"]}.png')
     

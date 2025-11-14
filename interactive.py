@@ -50,6 +50,9 @@ class InteractiveParameterSelector:
         self.cavity_fit_region = None  # {'freq_range': (f_min, f_max), 'field_range': (h_min, h_max)}
         self.selected_peaks = []  # [(field, freq), (field, freq)] - для отслеживания пиков
         self.example_fields = []  # [field1, field2, ...] - поля для примеров фиттинга
+        self.preprocessing_range = None  # {'freq_range': (f_min, f_max), 'field_range': (h_min, h_max)} - диапазон для предобработки
+        self.data_range = None  # {'freq_range': (f_min, f_max), 'field_range': (h_min, h_max)} - диапазон данных для работы программы
+        self.manual_mode_requested = False  # Флаг для запуска режима ручного выбора пиков
         
         # Временные данные для многошаговых режимов
         self.temp_points = []
@@ -66,7 +69,10 @@ class InteractiveParameterSelector:
                                ['Расстояние\nмежду модами', 'separation', 'Выберите расстояние между модами'],
                                ['Диапазон фита\nрезонатора', 'cavity_fit_region', 'Выберите диапазон фита для резонатора'],
                                ['Выбрать\n2 пика', 'select_peaks', 'Выберите два пика на контурной карте'],
-                               ['Примеры\nфиттинга', 'example_fields', 'Выберите поля для примеров фиттинга']]
+                               ['Примеры\nфиттинга', 'example_fields', 'Выберите поля для примеров фиттинга'],
+                               ['Диапазон\nпредобработки', 'preprocessing_range', 'Выберите диапазон частот для удаления паразитных гармоник'],
+                               ['Диапазон\nданных', 'data_range', 'Выберите диапазон данных (частоты и поля) для работы программы'],
+                               ['Manual Peak\nSelection', 'manual_peak_selection', 'Запустить режим ручного выбора пиков']]
         
         self.save_button_params = ['Сохранить', self._save_parameters]
         self.clear_button_params = ['Очистить', self._clear_all]
@@ -116,6 +122,11 @@ class InteractiveParameterSelector:
     
     def _change_mode(self, new_mode, instruction):
         """Изменить режим выбора и обновить инструкцию"""
+        # Специальная обработка для manual_peak_selection - это не режим клика, а действие
+        if new_mode == 'manual_peak_selection':
+            self._handle_manual_peak_selection()
+            return
+        
         self.mode = new_mode
         self.temp_points = []
         if new_mode == 'select_peaks':
@@ -162,6 +173,12 @@ class InteractiveParameterSelector:
         
         elif self.mode == 'example_fields':
             self._handle_example_fields(freq_click, field_click)
+        
+        elif self.mode == 'preprocessing_range':
+            self._handle_preprocessing_range(freq_click, field_click)
+        
+        elif self.mode == 'data_range':
+            self._handle_data_range(freq_click, field_click)
     
     def _handle_magnon_calibration(self, freq, field):
         """
@@ -396,8 +413,15 @@ class InteractiveParameterSelector:
         """
         Обработка выбора двух пиков для отслеживания
         
-        Автоматически находит ближайший пик в окрестности клика
+        Автоматически находит ближайший пик в окрестности клика.
+        Первый пик определяет поле, при котором будет выбран и второй пик.
         """
+        # Если это второй пик, используем поле первого пика
+        if len(self.selected_peaks) == 1:
+            # Используем поле первого пика
+            field = self.selected_peaks[0][0]
+            print(f"  → Второй пик будет выбран при поле первого пика: H={field:.2f} Э")
+        
         # Автоматический поиск пика в окрестности клика
         try:
             import peak_tracking
@@ -508,10 +532,155 @@ class InteractiveParameterSelector:
                                     f'{[f"{f:.1f}" for f in self.example_fields]} Э')
             self.mode = None
     
+    def _handle_preprocessing_range(self, freq, field):
+        """
+        Обработка выбора диапазона для предобработки (удаления паразитных гармоник)
+        
+        Пользователь выбирает два угла прямоугольной области (частота + поле)
+        где НЕТ сигнальных пиков, только паразитные гармоники
+        """
+        # Сохраняем и частоту, и поле
+        self.temp_points.append((freq, field))
+        
+        # Цвет для маркеров
+        color = 'purple'
+        
+        # Добавляем маркер
+        marker, = self.ax.plot(freq, field, 'o', color=color, markersize=12, 
+                              markeredgecolor='white', markeredgewidth=2)
+        self.markers.append(marker)
+        
+        self.fig.canvas.draw()
+        
+        if len(self.temp_points) == 1:
+            self._update_instruction(f'Точка 1: f={freq:.6f} ГГц, H={field:.1f} Э. '
+                                    f'Кликните второй угол области для усреднения (БЕЗ сигнальных пиков!)')
+        elif len(self.temp_points) == 2:
+            freq1, field1 = self.temp_points[0]
+            freq2, field2 = self.temp_points[1]
+            
+            # Сортируем для определения min/max
+            freq_min, freq_max = sorted([freq1, freq2])
+            field_min, field_max = sorted([field1, field2])
+            
+            self.preprocessing_range = {
+                'freq_range': (freq_min, freq_max),
+                'field_range': (field_min, field_max)
+            }
+            
+            # Рисуем прямоугольник диапазона
+            from matplotlib.patches import Rectangle
+            rect = Rectangle((freq_min, field_min), 
+                           freq_max - freq_min, 
+                           field_max - field_min,
+                           linewidth=3, edgecolor=color, facecolor=color, alpha=0.2,
+                           linestyle='--')
+            self.ax.add_patch(rect)
+            self.lines.append(rect)
+            
+            # Добавляем текст с размерами области
+            text = self.ax.text((freq_min + freq_max)/2, (field_min + field_max)/2,
+                              f'Предобработка\nΔf={freq_max-freq_min:.3f} ГГц\nΔH={field_max-field_min:.1f} Э',
+                              fontsize=10, color=color, fontweight='bold',
+                              ha='center', va='center',
+                              bbox=dict(boxstyle='round,pad=0.5', facecolor='white', 
+                                       edgecolor=color, alpha=0.9))
+            self.markers.append(text)
+            
+            self.fig.canvas.draw()
+            
+            self._update_instruction(f'Диапазон предобработки выбран: '
+                                    f'f=[{freq_min:.3f}, {freq_max:.3f}] ГГц, '
+                                    f'H=[{field_min:.1f}, {field_max:.1f}] Э')
+            self.temp_points = []
+            self.mode = None
+    
+    def _handle_data_range(self, freq, field):
+        """
+        Обработка выбора диапазона данных для работы программы
+        
+        Пользователь выбирает два угла прямоугольной области (частота + поле),
+        по которой будут обрезаны данные после предобработки
+        """
+        # Сохраняем и частоту, и поле
+        self.temp_points.append((freq, field))
+        
+        # Цвет для маркеров
+        color = 'lime'
+        
+        # Добавляем маркер
+        marker, = self.ax.plot(freq, field, 's', color=color, markersize=14, 
+                              markeredgecolor='black', markeredgewidth=2)
+        self.markers.append(marker)
+        
+        self.fig.canvas.draw()
+        
+        if len(self.temp_points) == 1:
+            self._update_instruction(f'Точка 1: f={freq:.6f} ГГц, H={field:.1f} Э. '
+                                    f'Кликните второй угол диапазона данных для работы программы')
+        elif len(self.temp_points) == 2:
+            freq1, field1 = self.temp_points[0]
+            freq2, field2 = self.temp_points[1]
+            
+            # Сортируем для определения min/max
+            freq_min, freq_max = sorted([freq1, freq2])
+            field_min, field_max = sorted([field1, field2])
+            
+            self.data_range = {
+                'freq_range': (freq_min, freq_max),
+                'field_range': (field_min, field_max)
+            }
+            
+            # Рисуем прямоугольник диапазона
+            from matplotlib.patches import Rectangle
+            rect = Rectangle((freq_min, field_min), 
+                           freq_max - freq_min, 
+                           field_max - field_min,
+                           linewidth=4, edgecolor=color, facecolor='none', alpha=0.9,
+                           linestyle='-')
+            self.ax.add_patch(rect)
+            self.lines.append(rect)
+            
+            # Добавляем текст с размерами области
+            text = self.ax.text((freq_min + freq_max)/2, (field_min + field_max)/2,
+                              f'Диапазон данных\nΔf={freq_max-freq_min:.3f} ГГц\nΔH={field_max-field_min:.1f} Э',
+                              fontsize=11, color='black', fontweight='bold',
+                              ha='center', va='center',
+                              bbox=dict(boxstyle='round,pad=0.6', facecolor=color, 
+                                       edgecolor='black', alpha=0.8, linewidth=2))
+            self.markers.append(text)
+            
+            self.fig.canvas.draw()
+            
+            self._update_instruction(f'Диапазон данных выбран: '
+                                    f'f=[{freq_min:.3f}, {freq_max:.3f}] ГГц, '
+                                    f'H=[{field_min:.1f}, {field_max:.1f}] Э')
+            self.temp_points = []
+            self.mode = None
+    
+    def _handle_manual_peak_selection(self):
+        """
+        Обработка кнопки Manual Peak Selection
+        
+        Устанавливает флаг для запуска режима ручного выбора пиков после закрытия окна
+        """
+        self.manual_mode_requested = True
+        print("\n" + "=" * 70)
+        print("MANUAL PEAK SELECTION MODE REQUESTED")
+        print("=" * 70)
+        print("После закрытия интерактивного окна запустится режим ручного выбора пиков.")
+        print("Убедитесь, что выбран 'Диапазон резонатора' для предварительного фиттинга!")
+        print("=" * 70 + "\n")
+        
+        self._update_instruction('✓ Режим ручного выбора пиков активирован. '
+                               'Закройте окно после выбора диапазона резонатора.')
+        self.mode = None
+    
     def _update_instruction(self, text):
         """Обновить текст инструкции"""
         self.instruction_text.set_text(text)
         self.fig.canvas.draw()
+
     
     def _clear_all(self, event):
         """Очистить все маркеры и сохраненные данные"""
@@ -533,6 +702,8 @@ class InteractiveParameterSelector:
         self.cavity_fit_region = None
         self.selected_peaks = []  # Очистить выбранные пики
         self.example_fields = []  # Очистить поля примеров
+        self.preprocessing_range = None  # Очистить диапазон предобработки
+        self.data_range = None  # Очистить диапазон данных
         self.temp_points = []
         self.mode = None
         
@@ -592,6 +763,16 @@ class InteractiveParameterSelector:
             lines.append(f"INTERACTIVE_EXAMPLE_FIELDS = {self.example_fields}\n")
             lines.append("\n")
         
+        if self.preprocessing_range is not None:
+            lines.append("# Диапазон для предобработки (удаления паразитных гармоник)\n")
+            lines.append(f"INTERACTIVE_PREPROCESSING_RANGE = {self.preprocessing_range}\n")
+            lines.append("\n")
+        
+        if self.data_range is not None:
+            lines.append("# Диапазон данных для работы программы (обрезка по частоте и полю)\n")
+            lines.append(f"INTERACTIVE_DATA_RANGE = {self.data_range}\n")
+            lines.append("\n")
+        
         # Путь к файлу конфига
         config_path = os.path.join(os.path.dirname(config_physics.__file__), 
                                    'config_interactive.py')
@@ -627,7 +808,10 @@ class InteractiveParameterSelector:
             'mode_separations': self.mode_separations,
             'cavity_fit_region': self.cavity_fit_region,
             'selected_peaks': self.selected_peaks,  # Добавляем выбранные пики
-            'example_fields': self.example_fields  # Добавляем поля примеров
+            'example_fields': self.example_fields,  # Добавляем поля примеров
+            'preprocessing_range': self.preprocessing_range,  # Добавляем диапазон предобработки
+            'data_range': self.data_range,  # Добавляем диапазон данных
+            'manual_mode_requested': self.manual_mode_requested  # Флаг ручного режима
         }
 
 
