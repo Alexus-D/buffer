@@ -51,6 +51,9 @@ def find_peak_flexible(freqs, s_values, expected_freq, expected_width, expected_
     # Извлекаем данные в окрестности
     local_freqs = freqs[freq_indices]
     local_s_values = s_values[freq_indices]
+
+    if peak_type == 'minimum':
+        local_s_values = -local_s_values  # Инвертируем для поиска минимумов
     
     # Вычисляем шаг по частоте
     freq_step = local_freqs[1] - local_freqs[0] if len(local_freqs) > 1 else 0.001
@@ -77,7 +80,7 @@ def find_peak_flexible(freqs, s_values, expected_freq, expected_width, expected_
             peak_idx = found_peaks[0][idx_in_result]
         
         peak_freq = local_freqs[peak_idx]
-        peak_magnitude = local_s_values[peak_idx]
+        peak_magnitude = local_s_values[peak_idx] if peak_type == 'maximum' else -local_s_values[peak_idx]
         peak_prominence = found_peaks[1]['prominences'][idx_in_result]
         peak_width = found_peaks[1]['widths'][idx_in_result] * freq_step
         
@@ -120,7 +123,7 @@ def estimate_cavity_params(res_magnitude, resonance_freq, cavity_width, plato):
     con = np.abs(res_magnitude - plato)
 
     kappa = con * cavity_width / 2
-    beta = cavity_width / 2 - kappa
+    beta = cavity_width / 2 * (1 - con)
 
     return {'kappa': kappa,
             'beta': beta,
@@ -177,6 +180,53 @@ def estimate_peak_width(data, peak):
 
 def fano_model(f, f0, gamma, q, a, b):
     epsilon = (f - f0) / (gamma / 2)
-    fano_line = a * ((q + epsilon)**2) / (1 + epsilon**2) + b
+    fano_line_normilized = ((q + epsilon)**2) / (1 + epsilon**2) / (1 + q**2)
+    fano_line = a * fano_line_normilized + b
     return fano_line
 
+def calibrate_magnon_frequency(fields, magnon_freqs_experimental):
+    """
+    Калибрует частоту магнонов по гиромагнитному соотношению
+    
+    Использует экспериментальную частоту при минимальном поле для калибровки,
+    затем рассчитывает линейную зависимость частоты от поля по гиромагнитному соотношению.
+    
+    Parameters:
+    -----------
+    fields : array
+        Массив значений магнитного поля (Oe)
+    magnon_freqs_experimental : array
+        Экспериментально полученные частоты магнонов (GHz)
+        
+    Returns:
+    --------
+    magnon_freqs_calibrated : array
+        Откалиброванные частоты магнонов по гиромагнитному соотношению (GHz)
+    offset : float
+        Найденное смещение частоты (GHz)
+    """
+    # Берем минимальное поле и соответствующую частоту для калибровки
+    min_field_idx = np.argmin(fields)
+    min_field = fields[min_field_idx]
+    freq_at_min_field = magnon_freqs_experimental[min_field_idx]
+    
+    # Гиромагнитное отношение из конфига (ГГц/Э)
+    gamma_g = config_physics.GYROMAGNETIC_RATIO
+    
+    # Рассчитываем смещение (offset)
+    # f_magnon = gamma_g * H + offset
+    # offset = f_magnon - gamma_g * H
+    offset = freq_at_min_field - gamma_g * min_field
+    
+    # Рассчитываем откалиброванные частоты для всех полей
+    magnon_freqs_calibrated = gamma_g * fields + offset
+    
+    print(f"\n{'='*60}")
+    print("MAGNON FREQUENCY CALIBRATION")
+    print(f"{'='*60}")
+    print(f"Gyromagnetic ratio: {gamma_g:.6f} GHz/Oe")
+    print(f"Calibration point: H = {min_field:.2f} Oe, f = {freq_at_min_field:.6f} GHz")
+    print(f"Frequency offset: {offset:.6f} GHz")
+    print(f"{'='*60}\n")
+    
+    return magnon_freqs_calibrated, offset

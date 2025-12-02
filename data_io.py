@@ -73,20 +73,24 @@ def load_s_parameter_data(filepath):
     
     # Формирование словаря результата
     data = {
-        'freq': freq,
-        'field': field,
-        's_param': s_param,
+        'y': freq,
+        'x': field,
+        'z': s_param,
         's_type': s_type,
-        'filepath': filepath
+        'filepath': filepath,
+        'plot_type': 'contour',
+        'x_label': 'Magnetic Field (Oe)',
+        'y_label': 'Frequency (GHz)',
+        'z_label': f'|{s_type}|'
     }
 
-    return filter_data_by_range(data, field_range=config_physics.FIELD_RANGE, freq_range=config_physics.FREQ_RANGE)
+    return filter_data_by_range(data, x_range=config_physics.FIELD_RANGE, y_range=config_physics.FREQ_RANGE)
 
 # =============================================================================
 # ОБРАБОТКА ДАННЫХ
 # =============================================================================
 
-def filter_data_by_range(data, field_range=None, freq_range=None):
+def filter_data_by_range(data, x_range=None, y_range=None):
     """
     Отфильтровать данные по диапазонам поля и частоты
     
@@ -107,7 +111,7 @@ def filter_data_by_range(data, field_range=None, freq_range=None):
     # Создаем копию словаря, чтобы не модифицировать исходные данные
     filtered_data = {}
 
-    ranges = {'freq': freq_range, 'field': field_range}
+    ranges = {'y': y_range, 'x': x_range}
     masks = {}
 
     for key, value in ranges.items():
@@ -122,13 +126,13 @@ def filter_data_by_range(data, field_range=None, freq_range=None):
             raise ValueError(f"Ключ '{key}' отсутствует в данных для фильтрации.")
     
     # Создаем новый словарь с отфильтрованными данными
-    filtered_data['freq'] = data['freq'][masks['freq']] if 'freq' in masks else data['freq']
-    filtered_data['field'] = data['field'][masks['field']] if 'field' in masks else data['field']
-    filtered_data['s_param'] = data['s_param'][np.ix_(masks['field'], masks['freq'])] if 'field' in masks and 'freq' in masks else data['s_param']
+    filtered_data['y'] = data['y'][masks['y']] if 'y' in masks else data['y']
+    filtered_data['x'] = data['x'][masks['x']] if 'x' in masks else data['x']
+    filtered_data['z'] = data['z'][np.ix_(masks['x'], masks['y'])] if 'x' in masks and 'y' in masks else data['z']
     
     # Копируем остальные ключи из исходного словаря
     for key in data:
-        if key not in ['freq', 'field', 's_param']:
+        if key not in ['x', 'y', 'z']:
             filtered_data[key] = data[key]
     
     return filtered_data

@@ -1,0 +1,345 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\geometry{margin=2cm}
+
+\title{Разложение собственных частот связанной системы\\резонатор-магнон}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Исходные формулы}
+
+Комплексные частоты резонатора и магнона:
+\begin{align}
+\omega_c^{\text{complex}} &= \omega_c - i\beta \\
+\omega_m^{\text{complex}} &= \omega_m - i\alpha
+\end{align}
+
+Диссипативная связь:
+\begin{equation}
+\Gamma = \sqrt{\kappa \gamma}
+\end{equation}
+
+Собственные частоты связанной системы:
+\begin{align}
+\omega_+ &= \frac{1}{2}\left(\omega_c^{\text{complex}} + \omega_m^{\text{complex}} + \sqrt{(\omega_c^{\text{complex}} - \omega_m^{\text{complex}})^2 + 4(J - i\Gamma)^2}\right) \\
+\omega_- &= \frac{1}{2}\left(\omega_c^{\text{complex}} + \omega_m^{\text{complex}} - \sqrt{(\omega_c^{\text{complex}} - \omega_m^{\text{complex}})^2 + 4(J - i\Gamma)^2}\right)
+\end{align}
+
+\section{Раскрытие комплексного корня}
+
+\subsection{Шаг 1: Вычисление подкоренного выражения}
+
+Введем обозначения:
+\begin{align}
+\Delta\omega &= \omega_c - \omega_m \quad \text{(расстройка частот)} \\
+\Delta\gamma &= \beta - \alpha \quad \text{(разность затуханий)}
+\end{align}
+
+Раскроем квадрат разности комплексных частот:
+\begin{align}
+(\omega_c^{\text{complex}} - \omega_m^{\text{complex}})^2 &= [(\omega_c - \omega_m) - i(\beta - \alpha)]^2 \nonumber \\
+&= (\Delta\omega - i\Delta\gamma)^2 \nonumber \\
+&= \Delta\omega^2 - \Delta\gamma^2 - 2i\Delta\omega\Delta\gamma
+\end{align}
+
+Раскроем квадрат связи:
+\begin{align}
+4(J - i\Gamma)^2 &= 4(J^2 - \Gamma^2 - 2iJ\Gamma)
+\end{align}
+
+Сложим оба слагаемых:
+\begin{align}
+z &= (\omega_c^{\text{complex}} - \omega_m^{\text{complex}})^2 + 4(J - i\Gamma)^2 \nonumber \\
+&= (\Delta\omega^2 - \Delta\gamma^2 + 4J^2 - 4\Gamma^2) + i(-2\Delta\omega\Delta\gamma - 8J\Gamma) \nonumber \\
+&= A + iB
+\end{align}
+
+где:
+\begin{align}
+A &= \Delta\omega^2 - \Delta\gamma^2 + 4J^2 - 4\Gamma^2 \\
+B &= -2\Delta\omega\Delta\gamma - 8J\Gamma
+\end{align}
+
+\subsection{Шаг 2: Извлечение квадратного корня}
+
+Для комплексного числа $z = A + iB$ квадратный корень вычисляется через модуль и аргумент:
+\begin{equation}
+\sqrt{z} = \sqrt{|z|} \cdot e^{i\varphi/2}
+\end{equation}
+
+где:
+\begin{align}
+|z| &= \sqrt{A^2 + B^2} \\
+\varphi &= \arg(z) = \arctan\left(\frac{B}{A}\right) = \text{atan2}(B, A)
+\end{align}
+
+Следовательно:
+\begin{align}
+R &= \sqrt{|z|} = \sqrt{\sqrt{A^2 + B^2}} = (A^2 + B^2)^{1/4} \\
+\phi &= \frac{\varphi}{2} = \frac{1}{2}\arctan\left(\frac{B}{A}\right)
+\end{align}
+
+Тогда:
+\begin{equation}
+\sqrt{z} = R e^{i\phi} = R\cos\phi + iR\sin\phi
+\end{equation}
+
+\section{Итоговые формулы}
+
+\subsection{Действительные части (частоты)}
+
+\begin{align}
+\text{Re}(\omega_+) &= \frac{1}{2}\left(\omega_c + \omega_m + R\cos\phi\right) \\
+\text{Re}(\omega_-) &= \frac{1}{2}\left(\omega_c + \omega_m - R\cos\phi\right)
+\end{align}
+
+\subsection{Мнимые части (затухания)}
+
+\begin{align}
+\text{Im}(\omega_+) &= \frac{1}{2}\left(-(\alpha + \beta) + R\sin\phi\right) \\
+\text{Im}(\omega_-) &= \frac{1}{2}\left(-(\alpha + \beta) - R\sin\phi\right)
+\end{align}
+
+\subsection{Вспомогательные параметры}
+
+\begin{align}
+R &= (A^2 + B^2)^{1/4} \\
+\phi &= \frac{1}{2}\arctan\left(\frac{B}{A}\right) = \frac{1}{2}\text{atan2}(B, A) \\
+A &= (\omega_c - \omega_m)^2 - (\beta - \alpha)^2 + 4J^2 - 4\Gamma^2 \\
+B &= -2(\omega_c - \omega_m)(\beta - \alpha) - 8J\Gamma
+\end{align}
+
+\section{Ширины пиков S-параметров: вывод}
+
+\subsection{Формула для S-параметра}
+
+Для связанной системы резонатор-магнон S-параметр имеет вид:
+\begin{equation}
+S_{21}(\omega) = S_{\text{plato}} + \frac{\kappa}{i\Delta\omega_c - (\kappa+\beta) - \frac{g^2}{i\Delta\omega_m - (\gamma+\alpha)}}
+\end{equation}
+
+где:
+\begin{align*}
+\Delta\omega_c &= \omega - \omega_c \quad \text{(расстройка от резонатора)} \\
+\Delta\omega_m &= \omega - \omega_m \quad \text{(расстройка от магнона)} \\
+g &= J - i\Gamma \quad \text{(комплексная связь)}
+\end{align*}
+
+\subsection{Упрощение вблизи собственной частоты}
+
+\subsubsection{Шаг 1: Физический смысл знаменателя}
+
+Знаменатель S-параметра:
+\begin{equation}
+D(\omega) = i\Delta\omega_c - (\kappa+\beta) - \frac{g^2}{i\Delta\omega_m - (\gamma+\alpha)}
+\end{equation}
+
+где $\Delta\omega_c = \omega - \omega_c$ и $\Delta\omega_m = \omega - \omega_m$.
+
+\textbf{Почему знаменатель мал вблизи собственной частоты?}
+
+\textit{Важно:} В диссипативной системе знаменатель \textbf{не обращается в нуль точно}, а только становится минимальным по модулю. Это правильно: $S_{21}$ не уходит в бесконечность из-за потерь $\kappa, \beta, \gamma, \alpha$.
+
+Однако вблизи собственной частоты $\omega_0$ (которая является корнем \textit{дисперсионного уравнения} связанной системы) знаменатель достигает минимума. Математически:
+\begin{equation}
+|D(\omega)| \text{ минимален при } \omega \approx \omega_0
+\end{equation}
+
+Собственная частота $\omega_0$ находится из условия резонанса связанной системы. Для диссипативной системы это комплексная частота $\omega_0 = \omega_r + i\omega_i$ (где $\omega_i < 0$ описывает затухание).
+
+\textbf{Связь с условием D($\omega_0$) = 0:}
+
+Если рассматривать \textit{комплексную} частоту $\omega = \omega_0 = \omega_r + i\omega_i$, то при правильном выборе $\omega_0$ знаменатель \textit{действительно} обращается в нуль: $D(\omega_0) = 0$ (в комплексной плоскости частот).
+
+При сканировании \textit{действительной} частоты $\omega$ в эксперименте мы проходим вблизи этой комплексной частоты $\omega_0$, где $|D(\omega)|$ минимален (но не нулевой).
+
+\textbf{Пример с одним резонатором:}
+
+Для резонатора без связи ($g = 0$):
+\begin{equation}
+D(\omega) = i(\omega - \omega_c) - (\kappa + \beta)
+\end{equation}
+
+При $\omega = \omega_c$ (резонанс):
+\begin{equation}
+D(\omega_c) = -(\kappa + \beta) \neq 0
+\end{equation}
+
+Действительно, знаменатель не нулевой! Но если взять \textit{комплексную} собственную частоту:
+\begin{equation}
+\omega_0 = \omega_c - i(\kappa + \beta)
+\end{equation}
+
+то получим:
+\begin{equation}
+D(\omega_0) = i(\omega_c - i(\kappa+\beta) - \omega_c) - (\kappa+\beta) = -(\kappa+\beta) - (\kappa+\beta) = 0 \quad \text{\textbf{Нет, ошибка!}}
+\end{equation}
+
+Правильно:
+\begin{equation}
+D(\omega_0) = i \cdot (-i(\kappa+\beta)) - (\kappa+\beta) = (\kappa+\beta) - (\kappa+\beta) = 0 \quad \checkmark
+\end{equation}
+
+Таким образом, собственная частота $\omega_0 = \omega_c - i(\kappa+\beta)$ \textit{в комплексной плоскости} даёт $D(\omega_0) = 0$.
+
+\subsubsection{Шаг 2: Разложение знаменателя}
+
+Вблизи собственной частоты $\omega_0$ разложим $D(\omega)$ в ряд Тейлора по $\omega$:
+\begin{equation}
+D(\omega) \approx D(\omega_0) + \frac{\partial D}{\partial \omega}\bigg|_{\omega=\omega_0}(\omega - \omega_0) + O((\omega - \omega_0)^2)
+\end{equation}
+
+Поскольку $D(\omega_0) = 0$ и вблизи резонанса $|\omega - \omega_0| \ll 1$:
+\begin{equation}
+D(\omega) \approx \frac{\partial D}{\partial \omega}\bigg|_{\omega=\omega_0}(\omega - \omega_0)
+\end{equation}
+
+\subsubsection{Шаг 3: Вычисление производной по частоте}
+
+Найдём $\frac{\partial D}{\partial \omega}$. Учитывая, что $\Delta\omega_c = \omega - \omega_c$ и $\Delta\omega_m = \omega - \omega_m$:
+\begin{align}
+\frac{\partial D}{\partial \omega} &= \frac{\partial}{\partial \omega}\left[i(\omega - \omega_c) - (\kappa+\beta) - \frac{g^2}{i(\omega - \omega_m) - (\gamma+\alpha)}\right] \nonumber \\
+&= i - \frac{\partial}{\partial \omega}\left[\frac{g^2}{i(\omega - \omega_m) - (\gamma+\alpha)}\right]
+\end{align}
+
+Для второго слагаемого используем правило дифференцирования сложной функции:
+\begin{align}
+\frac{\partial}{\partial \omega}\left[\frac{g^2}{i(\omega - \omega_m) - (\gamma+\alpha)}\right] &= g^2 \cdot \frac{\partial}{\partial \omega}\left[\frac{1}{i(\omega - \omega_m) - (\gamma+\alpha)}\right] \nonumber \\
+&= g^2 \cdot \left(-\frac{1}{[i(\omega - \omega_m) - (\gamma+\alpha)]^2}\right) \cdot i \nonumber \\
+&= -\frac{ig^2}{[i\Delta\omega_m - (\gamma+\alpha)]^2}
+\end{align}
+
+Следовательно:
+\begin{equation}
+\frac{\partial D}{\partial \omega} = i + \frac{ig^2}{[i\Delta\omega_m - (\gamma+\alpha)]^2}
+\end{equation}
+
+В точке $\omega_0$ эта производная есть некоторая комплексная константа:
+\begin{equation}
+C = \frac{\partial D}{\partial \omega}\bigg|_{\omega=\omega_0}
+\end{equation}
+
+\subsubsection{Шаг 3: Упрощение S-параметра}
+
+Подставляем разложение:
+\begin{equation}
+S_{21}(\omega) \approx S_{\text{plato}} + \frac{\kappa}{C(\omega - \omega_0)}
+\end{equation}
+
+Квадрат модуля:
+\begin{align}
+|S_{21}(\omega)|^2 &\approx \left|S_{\text{plato}} + \frac{\kappa}{C(\omega - \omega_0)}\right|^2 \nonumber \\
+&\approx \frac{\kappa^2}{|C|^2|\omega - \omega_0|^2} \quad \text{(вблизи резонанса доминирует второе слагаемое)}
+\end{align}
+
+\subsubsection{Шаг 4: Модуль комплексной расстройки}
+
+Теперь ключевой момент. Раскроем $|\omega - \omega_0|^2$:
+\begin{align}
+|\omega - \omega_0|^2 &= |\omega - (\omega_r + i\omega_i)|^2 \nonumber \\
+&= |(\omega - \omega_r) - i\omega_i|^2 \nonumber \\
+&= (\omega - \omega_r)^2 + \omega_i^2
+\end{align}
+
+\subsubsection{Итоговая формула}
+
+Таким образом:
+\begin{equation}
+|S_{21}(\omega)|^2 \approx \frac{A}{(\omega - \omega_r)^2 + \omega_i^2}
+\end{equation}
+
+где $A = \kappa^2/|C|^2$ — нормировочная константа.
+
+Это и есть стандартный лоренцевский профиль с:
+\begin{itemize}
+\item $\omega_r = \text{Re}(\omega_0)$ — центральная частота пика
+\item $\omega_i = \text{Im}(\omega_0)$ — полуширина затухания (обычно $\omega_i < 0$)
+\item $A$ — амплитуда (зависит от внешней связи $\kappa$)
+\end{itemize}
+
+\subsection{Условие полувысоты}
+
+Максимум достигается при $\omega = \omega_r$:
+\begin{equation}
+|S_{21}(\omega_r)|^2 = \frac{A}{\omega_i^2}
+\end{equation}
+
+Половина максимума достигается при:
+\begin{equation}
+|S_{21}(\omega)|^2 = \frac{1}{2} \cdot \frac{A}{\omega_i^2}
+\end{equation}
+
+Это означает, что знаменатель удваивается:
+\begin{equation}
+(\omega - \omega_r)^2 + \omega_i^2 = 2\omega_i^2
+\end{equation}
+
+Откуда:
+\begin{equation}
+(\omega - \omega_r)^2 = \omega_i^2
+\end{equation}
+
+\begin{equation}
+\omega - \omega_r = \pm|\omega_i|
+\end{equation}
+
+Следовательно, полная ширина на полувысоте (FWHM):
+\begin{equation}
+\boxed{\text{FWHM} = 2|\omega_i| = 2|\text{Im}(\omega_0)| = -2\text{Im}(\omega_0)}
+\end{equation}
+
+(минус появляется, так как $\text{Im}(\omega_0) < 0$ для затухающего резонанса)
+
+\subsection{Применение к нашим модам}
+
+Для моды $\omega_+$:
+\begin{align}
+\text{FWHM}_+ &= -2\text{Im}(\omega_+) \nonumber \\
+&= -2 \cdot \frac{1}{2}\left(-(\alpha + \beta) + R\sin\phi\right) \nonumber \\
+&= (\alpha + \beta) - R\sin\phi
+\end{align}
+
+Для моды $\omega_-$:
+\begin{align}
+\text{FWHM}_- &= -2\text{Im}(\omega_-) \nonumber \\
+&= -2 \cdot \frac{1}{2}\left(-(\alpha + \beta) - R\sin\phi\right) \nonumber \\
+&= (\alpha + \beta) + R\sin\phi
+\end{align}
+
+\subsection{Физический смысл}
+
+\begin{itemize}
+\item Базовая ширина $(\alpha + \beta)$ — сумма затуханий резонатора и магнона
+\item Поправка $R\sin\phi$ — вклад от связи, зависящий от:
+\begin{itemize}
+\item Величины связи $J$ и $\Gamma$
+\item Расстройки частот $\Delta\omega$
+\item Разности затуханий $\Delta\gamma$
+\end{itemize}
+\item При сильной связи происходит перераспределение затуханий между модами:
+\begin{itemize}
+\item Одна мода становится уже (меньше затухает)
+\item Другая мода становится шире (больше затухает)
+\end{itemize}
+\item В резонансе $(\omega_c = \omega_m)$ при $\alpha = \beta$ обе моды имеют одинаковую ширину
+\end{itemize}
+
+\section{Физическая интерпретация}
+
+\begin{itemize}
+\item $\text{Re}(\omega_\pm)$ — частоты гибридизованных мод (расщепление антипересечения)
+\item $-\text{Im}(\omega_\pm)$ — скорости затухания мод
+\item $R$ — величина расщепления, зависящая от расстройки и связи
+\item $\phi$ — фаза, определяющая асимметрию расщепления при наличии диссипации
+\item При $\alpha = \beta = \Gamma = 0$ формулы упрощаются до стандартного расщепления Раби
+\end{itemize}
+
+\end{document}

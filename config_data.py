@@ -11,7 +11,7 @@ import os
 # =============================================================================
 
 # Имя файла с данными (реальные данные)
-FILENAME = 'Hybrid resonator and sphere S21.txt'
+FILENAME = 'Sphere in Al_Cu hybrid resonator 2nd harm S21.txt'
  
 # Корневая директория проекта
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -48,7 +48,7 @@ SKIP_ROWS = 0
 USE_DB_SCALE = True
 
 # Формат комплексных чисел ('magnitude_phase', 'real_imag', 'db_phase', 'db_amplitude', 'linear_amplitude')
-COMPLEX_FORMAT = 'linear_amplitude'
+COMPLEX_FORMAT = 'db_amplitude'
 
 # =============================================================================
 # ПАРАМЕТРЫ СОХРАНЕНИЯ РЕЗУЛЬТАТОВ
