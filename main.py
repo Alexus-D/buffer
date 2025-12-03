@@ -472,7 +472,107 @@ def construct_own_modes(peaks):
     plt.show()
     return {'modes': modes, 'fields': fields}
 
-def extract_coupling_params(resonator, own_modes):
+def extreact_coupling_params_for_Grisha(resonator, own_modes, magnon_calibration):
+    magnon_offset = magnon_calibration['offset']
+    gamma_g = magnon_calibration['gamma_g']
+
+    resonator_params = resonator['resonator_params']
+    output = []
+
+    fields = own_modes['fields'][0]
+    kappa = resonator_params['kappa']
+    beta = resonator_params['beta']
+    cavity_freq = resonator_params['resonance_freq']
+    plato = resonator_params['plato']
+
+    # #По моим формулам
+    # cavity_complex = cavity_freq - 1j * (beta + kappa)
+
+    #По формулам из статьи
+    cavity_complex = cavity_freq - 1j * beta
+
+    J, Gamma, gamma, alpha = [], [], [], []
+    magnon_freq_vals = [field * gamma_g + magnon_offset for field in fields]
+    magnon_freq_out = []
+
+    mode_1 = own_modes['modes'][0]
+    mode_2 = own_modes['modes'][1]
+
+    magnon_complex = []
+    for i, field in enumerate(fields):
+        mode_1_val = mode_1[i]
+        mode_2_val = mode_2[i]
+        magnon_complex_val = mode_1_val + mode_2_val - cavity_complex
+        magnon_complex.append(magnon_freq_vals[i] + 1j * magnon_complex_val.imag)
+    
+    # #По моим формулам
+    # for i, field in enumerate(fields):
+    #     mode_1_val = mode_1[i]
+    #     mode_2_val = mode_2[i]
+        
+    #     # Создаем комплексную частоту магнона с откалиброванной частотой
+    #     magnon_complex_calibrated = magnon_complex[i]
+        
+    #     # Рассчитываем coupling из собственных мод, используя КАЛИБРОВАННЫЕ частоты
+    #     # delta = 2 * cavity_complex - (magnon_complex_calibrated + cavity_complex)
+    #     delta = cavity_complex - magnon_complex_calibrated
+    #     coupling = np.sqrt((mode_1_val - mode_2_val)**2 - delta**2) / 2
+
+    #     J_val = coupling.real
+    #     Gamma_val = -coupling.imag
+    #     gamma_val = Gamma_val**2 / kappa
+    #     alpha_val = -magnon_complex_calibrated.imag - gamma_val
+
+    #     J.append(np.abs(J_val))
+    #     Gamma.append(np.abs(Gamma_val))
+    #     gamma.append(np.abs(gamma_val))
+    #     magnon_freq_out.append(np.abs(magnon_freq_vals[i]))
+    #     alpha.append(np.abs(alpha_val))
+
+    #По формулам из статьи
+    for i, field in enumerate(fields):
+        mode_1_val = mode_1[i]
+        mode_2_val = mode_2[i]
+        
+        # Создаем комплексную частоту магнона с откалиброванной частотой
+        magnon_complex_calibrated = magnon_complex[i]
+        
+        # Рассчитываем coupling из собственных мод, используя КАЛИБРОВАННЫЕ частоты
+        # delta = 2 * cavity_complex - (magnon_complex_calibrated + cavity_complex)
+        delta = cavity_complex - magnon_complex_calibrated
+        coupling = np.sqrt((mode_1_val - mode_2_val)**2 - delta**2) / 2
+
+        J_val = coupling.real
+        Gamma_val = -coupling.imag
+        gamma_val = Gamma_val**2 / kappa
+        alpha_val = -magnon_complex_calibrated.imag
+
+        J.append(np.abs(J_val))
+        Gamma.append(np.abs(Gamma_val))
+        gamma.append(np.abs(gamma_val))
+        magnon_freq_out.append(np.abs(magnon_freq_vals[i]))
+        alpha.append(np.abs(alpha_val))
+    
+    params = {
+        'field': fields,
+        'J': J,
+        'Gamma': Gamma,
+        'gamma': gamma,
+        'magnon_freq': magnon_freq_out,
+        'magnon_freq_experimental': magnon_freq_out,
+        'magnon_offset': magnon_offset,
+        'cavity_freq': cavity_freq * np.ones_like(fields),
+        'alpha': alpha,
+        'kappa': kappa * np.ones_like(fields),
+        'beta': beta * np.ones_like(fields),
+        'plato': plato
+    }
+
+    return params
+
+def extract_coupling_params(resonator, own_modes, grisha = False, magnon_calibration=None):
+    if grisha:
+        return extreact_coupling_params_for_Grisha(resonator, own_modes, magnon_calibration)
     resonator_params = resonator['resonator_params']
     output = []
 
